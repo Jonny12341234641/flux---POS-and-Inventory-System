@@ -123,7 +123,7 @@ export type Sale = {
 };
 
 //---9. Sale Items Table
-export type saleItem = {
+export type SaleItem = {
     id : string;
     sale_id : String;
     product_id : string;
