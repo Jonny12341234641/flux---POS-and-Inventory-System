@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase";
-import type { User } from "@/types";
+import { supabase } from "../..//lib/supabase";
+import type { User } from "../../types";
 
 type UserProfileRow = Pick<
   User,
