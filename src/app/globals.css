@@ -1,1 +1,43 @@
 @import "tailwindcss";
+
+/* In Tailwind v4, we define the theme directly here using CSS variables.
+  This effectively replaces the tailwind.config.ts 'extend' section.
+*/
+@theme {
+  /* Brand Colors */
+  --color-brand-light: #eff6ff;
+  --color-brand-DEFAULT: #2563eb;
+  --color-brand-dark: #1e40af;
+
+  /* Accent Colors */
+  --color-accent-success: #10b981;
+  --color-accent-danger: #ef4444;
+  --color-accent-warning: #f59e0b;
+
+  /* Surface Colors */
+  --color-surface-card: #ffffff;
+  --color-surface-bg: #f8fafc;
+}
+
+@layer base {
+  body {
+    /* Now that we defined --color-surface-bg above, 
+       Tailwind automatically creates the utility 'bg-surface-bg' 
+    */
+    @apply bg-surface-bg text-gray-900 antialiased;
+  }
+
+  /* Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
