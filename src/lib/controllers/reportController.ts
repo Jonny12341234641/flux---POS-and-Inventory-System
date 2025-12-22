@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase } from '/lib/supabase';
 import { ITEMS_PER_PAGE, TABLES } from '@/lib/constants';
 import type { Product, Sale, ShiftSession, StockMovement } from '@/types';
 
