@@ -1,6 +1,6 @@
-import { supabase } from '@/lib/supabase';
-import { TABLES } from '@/lib/constants';
-import type { Customer } from '@/types';
+import { supabase } from '../../lib/supabase';
+import { TABLES } from '../../lib/constants';
+import type { Customer } from '../../types';
 
 type ControllerResult<T> = {
   success: boolean;

@@ -1,6 +1,6 @@
-import { supabase } from '/lib/supabase';
-import { ITEMS_PER_PAGE, TABLES } from '@/lib/constants';
-import type { Product, Sale, ShiftSession, StockMovement } from '@/types';
+import { supabase } from '../../lib/supabase';
+import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
+import type { Product, Sale, ShiftSession, StockMovement } from '../../types';
 
 type ControllerResult<T> = {
   success: boolean;
