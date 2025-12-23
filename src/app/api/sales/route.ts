@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { createSale } from '@/lib/controllers/saleController';
+import { createClient } from '../../../utils/supabase/server';
+import { createSale } from '../../../lib/controllers/saleController';
 
 type SaleItemPayload = {
   product_id?: string;

@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { TABLES } from '../../lib/constants';
+import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
 import type { Customer } from '../../types';
 
 type ControllerResult<T> = {
@@ -90,6 +90,33 @@ export const searchCustomers = async (
     return {
       success: false,
       error: getErrorMessage(error, 'Failed to search customers'),
+    };
+  }
+};
+
+export const getCustomers = async (
+  page = 1
+): Promise<ControllerResult<Customer[]>> => {
+  try {
+    const safePage = page > 0 ? page : 1;
+    const from = (safePage - 1) * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE - 1;
+
+    const { data, error } = await supabase
+      .from(TABLES.CUSTOMERS)
+      .select('*')
+      .order('name', { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { success: true, data: (data ?? []) as Customer[] };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to fetch customers'),
     };
   }
 };
