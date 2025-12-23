@@ -5,7 +5,7 @@ import {
   deleteCategory,
   getCategories,
   updateCategory,
-} from "@/lib/controllers/inventoryController";
+} from "../../../../lib/controllers/inventoryController";
 
 const isPresent = (value: unknown): boolean => {
   if (value === null || value === undefined) {
