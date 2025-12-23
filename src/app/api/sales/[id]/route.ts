@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { getSaleById, refundSale } from '@/lib/controllers/saleController';
+import { createClient } from '../../../../utils/supabase/server';
+import { getSaleById, refundSale } from '../../../../lib/controllers/saleController';
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message.trim()) {
