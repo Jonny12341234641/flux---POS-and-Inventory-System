@@ -16,7 +16,7 @@ import {
   Users,
 } from "lucide-react";
 
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "../../utils/supabase/client";
 
 const menuItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -49,7 +49,7 @@ export default function SideBar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-50 flex h-screen w-64 flex-col bg-slate-900 text-white">
+    <aside className="flex h-screen w-64 shrink-0 flex-col bg-slate-900 text-white">
       <div className="p-6">
         <h1 className="text-lg font-bold tracking-wider">FLUX ADMIN</h1>
       </div>

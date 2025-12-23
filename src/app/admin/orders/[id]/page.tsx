@@ -11,8 +11,8 @@ import {
   FileText,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "../../../../components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "../../../../components/ui/card";
 
 interface OrderItem {
   id: string;
@@ -37,7 +37,7 @@ interface Order {
 }
 
 type ParamsShape = { id?: string | string[] };
-type ReactUse = <T,>(value: T) => T;
+type ReactUse = <T>(value: Promise<T>) => T;
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -99,7 +99,7 @@ const extractOrder = (data: unknown): Order | null => {
     (record.order as Order) ||
     (record.purchase_order as Order) ||
     (record.purchaseOrder as Order) ||
-    (record as Order);
+    (record as unknown as Order);
 
   if (!candidate || typeof candidate !== "object" || !candidate.id) {
     return null;

@@ -8,15 +8,15 @@ import {
 } from "react";
 import { Percent, Receipt, Save, Settings, Store } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "../../../components/ui/card";
 
 interface SystemSettings {
   storeName: string;
@@ -55,21 +55,126 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      // TODO: Replace with GET /api/settings
-      setSettings(DEFAULT_SETTINGS);
-    }, 300);
+    const controller = new AbortController();
+    const stringFrom = (value: unknown, fallback: string) =>
+      typeof value === "string" && value.trim() ? value : fallback;
+    const numberFrom = (value: unknown, fallback: number) => {
+      const parsed =
+        typeof value === "number"
+          ? value
+          : typeof value === "string"
+          ? Number(value)
+          : Number.NaN;
+      return Number.isFinite(parsed) ? parsed : fallback;
+    };
 
-    return () => window.clearTimeout(timer);
+    const normalizeSettings = (data: unknown): SystemSettings => {
+      if (!data || typeof data !== "object") {
+        return DEFAULT_SETTINGS;
+      }
+
+      const record = data as Record<string, unknown>;
+      const payload =
+        (record.settings as Record<string, unknown> | undefined) ??
+        (record.data as Record<string, unknown> | undefined) ??
+        record;
+
+      return {
+        storeName: stringFrom(
+          payload.storeName ?? payload.store_name,
+          DEFAULT_SETTINGS.storeName
+        ),
+        storeAddress: stringFrom(
+          payload.storeAddress ?? payload.store_address,
+          DEFAULT_SETTINGS.storeAddress
+        ),
+        storePhone: stringFrom(
+          payload.storePhone ?? payload.store_phone,
+          DEFAULT_SETTINGS.storePhone
+        ),
+        receiptFooter: stringFrom(
+          payload.receiptFooter ?? payload.receipt_footer,
+          DEFAULT_SETTINGS.receiptFooter
+        ),
+        taxRate: numberFrom(
+          payload.taxRate ?? payload.default_tax_rate,
+          DEFAULT_SETTINGS.taxRate
+        ),
+        currency: stringFrom(
+          payload.currency ?? payload.currency_symbol,
+          DEFAULT_SETTINGS.currency
+        ),
+        lowStockThreshold: numberFrom(
+          payload.lowStockThreshold ?? payload.low_stock_threshold,
+          DEFAULT_SETTINGS.lowStockThreshold
+        ),
+      };
+    };
+
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch("/api/settings", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load settings (status ${response.status}).`);
+        }
+
+        const data = await response.json();
+        if (!controller.signal.aborted) {
+          setSettings(normalizeSettings(data));
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
+        if (!controller.signal.aborted) {
+          setSettings(DEFAULT_SETTINGS);
+        }
+      }
+    };
+
+    fetchSettings();
+
+    return () => controller.abort();
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    // TODO: Replace with PUT /api/settings
-    window.setTimeout(() => {
-      setSaving(false);
+
+    const payload = {
+      store_name: settings.storeName.trim(),
+      store_address: settings.storeAddress.trim(),
+      store_phone: settings.storePhone.trim(),
+      receipt_footer: settings.receiptFooter.trim(),
+      default_tax_rate: settings.taxRate,
+      currency_symbol: settings.currency.trim(),
+      low_stock_threshold: settings.lowStockThreshold,
+    };
+
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to save settings (status ${response.status}).`
+        );
+      }
+
       window.alert("System settings saved.");
-    }, 1000);
+    } catch (err) {
+      window.alert(
+        err instanceof Error ? err.message : "Unable to save settings."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updateSetting = <Key extends keyof SystemSettings>(

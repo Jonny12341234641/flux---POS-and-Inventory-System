@@ -3,9 +3,9 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Edit, Lock, Plus, Shield, Trash, User as UserIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Button } from "../../../components/ui/button";
+import { Card, CardContent } from "../../../components/ui/card";
+import { Input } from "../../../components/ui/input";
 
 interface User {
   id: string;

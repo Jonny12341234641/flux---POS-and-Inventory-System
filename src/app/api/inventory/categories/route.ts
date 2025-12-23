@@ -7,7 +7,7 @@ import {
   updateCategory,
 } from "../../../../lib/controllers/inventoryController";
 
-const isPresent = (value: unknown): boolean => {
+const isPresent = <T>(value: T | null | undefined): value is T => {
   if (value === null || value === undefined) {
     return false;
   }

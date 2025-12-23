@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "../../../../utils/supabase/server";
 import {
   cancelOrder,
   getPurchaseOrderById,
   receiveGoods,
-} from "@/lib/controllers/orderController";
+} from "../../../../lib/controllers/orderController";
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message.trim()) {
@@ -77,7 +77,7 @@ export async function PUT(
 ) {
   void req;
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
       error: userError,
