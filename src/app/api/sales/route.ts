@@ -21,8 +21,24 @@ type SalePayload = {
   items?: SaleItemPayload[];
 };
 
+type NormalizedSaleItem = {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  discount?: number;
+  taxAmount?: number;
+};
+
 const isInsufficientStock = (message: string) =>
   message.toLowerCase().includes('insufficient stock');
+
+const isPaymentMethod = (
+  value: unknown
+): value is SalePayload['payment_method'] =>
+  value === 'cash' || value === 'card' || value === 'bank_transfer';
+
+const isNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 export async function POST(request: Request) {
   try {
@@ -45,6 +61,27 @@ export async function POST(request: Request) {
       items,
     } = body ?? {};
 
+    if (!isPaymentMethod(payment_method)) {
+      return NextResponse.json(
+        { error: 'Invalid payment_method' },
+        { status: 400 }
+      );
+    }
+
+    if (!isNumber(amount_paid)) {
+      return NextResponse.json(
+        { error: 'Invalid amount_paid' },
+        { status: 400 }
+      );
+    }
+
+    if (discount_total !== undefined && !isNumber(discount_total)) {
+      return NextResponse.json(
+        { error: 'Invalid discount_total' },
+        { status: 400 }
+      );
+    }
+
     const normalizedItems = Array.isArray(items)
       ? items.map((item) => ({
           productId: item.product_id ?? item.productId,
@@ -55,15 +92,34 @@ export async function POST(request: Request) {
         }))
       : [];
 
-    const payload = {
+    const hasInvalidItems = normalizedItems.some(
+      (item) =>
+        !item.productId ||
+        !isNumber(item.quantity) ||
+        !isNumber(item.unitPrice) ||
+        (item.discount !== undefined && !isNumber(item.discount)) ||
+        (item.taxAmount !== undefined && !isNumber(item.taxAmount))
+    );
+
+    if (hasInvalidItems) {
+      return NextResponse.json(
+        { error: 'Invalid items payload' },
+        { status: 400 }
+      );
+    }
+
+    const saleData = {
       payment_method,
       amount_paid,
       discount_total,
       customer_id,
-      items: normalizedItems,
     };
 
-    const result = await createSale(payload, payload.items, user.id);
+    const result = await createSale(
+      saleData,
+      normalizedItems as NormalizedSaleItem[],
+      user.id
+    );
 
     if (!result.success || !result.data) {
       throw new Error(result.error ?? 'Failed to process sale');
