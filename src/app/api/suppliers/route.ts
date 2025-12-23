@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   createSupplier,
   getSuppliers,
-} from "@/lib/controllers/supplierController";
+} from "../../../lib/controllers/supplierController";
 
 export async function GET(req: NextRequest) {
   try {
