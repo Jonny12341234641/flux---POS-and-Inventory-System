@@ -1,40 +1,80 @@
-// import { NextResponse } from 'next/server';
-// import { createSale } from '../../../lib/controllers/saleController';
-
-// export async function POST(request: Request) {
-//   try {
-//     const body = await request.json();
-
-//     const result = await createSale(body);
-//     return NextResponse.json({ message: "Sale processed successfully", ...result }, { status: 201 });
-
-//   } catch (error) {
-//     const message = error instanceof Error ? error.message : "Failed to process sale";
-//     return NextResponse.json({ error: message }, { status: 500 });
-//   }
-// }
-
-//Above is the code given by Codex below is given by Gemini
-
 import { NextResponse } from 'next/server';
-import { createSale } from '../../../lib/controllers/saleController'; // Import the Chef
+import { createClient } from '@/utils/supabase/server';
+import { createSale } from '@/lib/controllers/saleController';
 
-/**
- * POST /api/sales
- * Create a new sale
- * @param {Request} request - The Next.js request object
- * @returns {Promise<NextResponse>} - The response with the created sale data
- */
+type SaleItemPayload = {
+  product_id?: string;
+  productId?: string;
+  quantity: number;
+  unit_price?: number;
+  unitPrice?: number;
+  discount?: number;
+  tax_amount?: number;
+  taxAmount?: number;
+};
+
+type SalePayload = {
+  payment_method: 'cash' | 'card' | 'bank_transfer';
+  amount_paid: number;
+  discount_total?: number;
+  customer_id?: string | null;
+  items?: SaleItemPayload[];
+};
+
+const isInsufficientStock = (message: string) =>
+  message.toLowerCase().includes('insufficient stock');
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const supabase = createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    // Call the Controller to handle all the logic
-    const result = await createSale(body);
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    return NextResponse.json(result, { status: 201 });
+    const body = (await request.json()) as Partial<SalePayload>;
+    const {
+      payment_method,
+      amount_paid,
+      discount_total,
+      customer_id,
+      items,
+    } = body ?? {};
 
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    const normalizedItems = Array.isArray(items)
+      ? items.map((item) => ({
+          productId: item.product_id ?? item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unit_price ?? item.unitPrice,
+          discount: item.discount,
+          taxAmount: item.tax_amount ?? item.taxAmount,
+        }))
+      : [];
+
+    const payload = {
+      payment_method,
+      amount_paid,
+      discount_total,
+      customer_id,
+      items: normalizedItems,
+    };
+
+    const result = await createSale(payload, payload.items, user.id);
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error ?? 'Failed to process sale');
+    }
+
+    return NextResponse.json(result.data.sale, { status: 201 });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to process sale';
+    const status = isInsufficientStock(message) ? 400 : 500;
+
+    return NextResponse.json({ error: message }, { status });
   }
 }

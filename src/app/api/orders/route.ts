@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "../../../utils/supabase/server";
 import {
   createPurchaseOrder,
   getPurchaseOrders,
-} from "@/lib/controllers/orderController";
+} from "../../../lib/controllers/orderController";
 
 const isPresent = (value: unknown): boolean => {
   if (value === null || value === undefined) {

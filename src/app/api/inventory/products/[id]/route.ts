@@ -3,7 +3,7 @@ import {
   deleteProduct,
   getProductById,
   updateProduct,
-} from "@/lib/controllers/inventoryController";
+} from "../../../../../lib/controllers/inventoryController";
 
 const isDuplicateBarcodeError = (message: string): boolean => {
   const normalized = message.toLowerCase();

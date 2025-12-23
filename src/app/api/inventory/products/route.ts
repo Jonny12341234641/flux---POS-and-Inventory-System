@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   createProduct,
   getProducts,
-} from "@/lib/controllers/inventoryController";
+} from "../../../../lib/controllers/inventoryController";
 
 const isDuplicateBarcodeError = (message: string): boolean => {
   const normalized = message.toLowerCase();
