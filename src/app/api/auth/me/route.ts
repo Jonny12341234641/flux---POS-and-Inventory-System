@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/controllers/authController";
+import { getCurrentUser } from "../../../../lib/controllers/authController";
 
 export async function GET() {
   try {

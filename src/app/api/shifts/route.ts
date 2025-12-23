@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
-import { getCurrentShift, openShift } from "@/lib/controllers/shiftController";
+import { createClient } from "../../../utils/supabase/server";
+import { getCurrentShift, openShift } from "../../../lib/controllers/shiftController";
 
 type OpenShiftPayload = {
   starting_cash?: number | string;
