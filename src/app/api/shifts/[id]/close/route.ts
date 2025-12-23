@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
-import { closeShift } from "@/lib/controllers/shiftController";
+import { createClient } from "../../../../../utils/supabase/server";
+import { closeShift } from "../../../../../lib/controllers/shiftController";
 
 type CloseShiftPayload = {
   ending_cash?: number;
