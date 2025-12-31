@@ -27,16 +27,16 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   void req;
   try {
-    const { id } = params;
+    const { id } = await params;
     const result = await getProductById(id);
 
     if (!result.success || !result.data) {
       return NextResponse.json(
-        { error: "Product not found" },
+        { error: result.error || "Product not found" },
         { status: 404 }
       );
     }
@@ -47,7 +47,7 @@ export async function GET(
     );
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
+      { success: false, error: getErrorMessage(error, "Internal Server Error") },
       { status: 500 }
     );
   }
@@ -55,10 +55,10 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
 
     const result = await updateProduct(id, body);
@@ -73,7 +73,7 @@ export async function PUT(
       }
 
       return NextResponse.json(
-        { success: false, error: "Internal Server Error" },
+        { success: false, error: message },
         { status: 500 }
       );
     }
@@ -92,7 +92,7 @@ export async function PUT(
     }
 
     return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -100,16 +100,16 @@ export async function PUT(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   void req;
   try {
-    const { id } = params;
+    const { id } = await params;
     const result = await deleteProduct(id);
 
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: "Internal Server Error" },
+        { success: false, error: result.error || "Internal Server Error" },
         { status: 500 }
       );
     }
@@ -120,7 +120,7 @@ export async function DELETE(
     );
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
+      { success: false, error: getErrorMessage(error, "Internal Server Error") },
       { status: 500 }
     );
   }
