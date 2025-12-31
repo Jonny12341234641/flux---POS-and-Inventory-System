@@ -59,7 +59,16 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      void e;
+      return NextResponse.json(
+        { success: false, error: "Invalid or missing JSON body" },
+        { status: 400 }
+      );
+    }
 
     const result = await updateProduct(id, body);
 
