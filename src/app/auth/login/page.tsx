@@ -1,0 +1,103 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { Button } from "../../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../../components/ui/card";
+import { Input } from "../../../components/ui/input";
+import { createClient } from "../../../utils/supabase/client";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const supabase = createClient();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    setError(null);
+    setIsSubmitting(true);
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (signInError) {
+      setError(signInError.message);
+      setIsSubmitting(false);
+      return;
+    }
+
+    router.replace("/pos");
+    router.refresh();
+  };
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-surface-bg px-4">
+      <Card className="w-full max-w-md border-slate-200">
+        <CardHeader className="text-center">
+          <CardTitle>Welcome back</CardTitle>
+          <CardDescription>Sign in to continue to Flux POS.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700" htmlFor="email">
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@company.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label
+                className="text-sm font-medium text-slate-700"
+                htmlFor="password"
+              >
+                Password
+              </label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </div>
+            {error ? (
+              <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </p>
+            ) : null}
+            <Button className="w-full" type="submit" isLoading={isSubmitting}>
+              Sign in
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
