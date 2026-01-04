@@ -14,14 +14,17 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // --- 1. FETCH PRODUCTS FROM API ---
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch('/api/products'); // Calls your Backend Route
+        const res = await fetch('/api/inventory/products'); // Calls your Backend Route
         const data = await res.json();
-        setProducts(data);
+        // Handle different response structures
+        const productList = Array.isArray(data) ? data : (data.data || []);
+        setProducts(productList);
       } catch (error) {
         console.error("Failed to load products", error);
       } finally {
@@ -55,7 +58,44 @@ export default function POSPage() {
   const tax = subTotal * 0.10; // 10% Tax
   const grandTotal = subTotal + tax;
 
-  // --- 4. FILTERING ---
+  // --- 4. CHECKOUT LOGIC ---
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+    
+    setIsCheckingOut(true);
+    try {
+      const payload = {
+        items: cart.map(item => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price
+        })),
+        payment_method: 'cash', // Defaulting to cash for now
+      };
+
+      const res = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Checkout failed');
+      }
+
+      // Success
+      alert('Sale processed successfully!');
+      setCart([]); // Clear cart
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : 'Checkout failed');
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
+
+  // --- 5. FILTERING ---
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     p.barcode?.includes(searchQuery)
@@ -82,6 +122,8 @@ export default function POSPage() {
         <div className="flex-1 overflow-y-auto grid grid-cols-3 gap-4">
           {loading ? (
             <p className="text-gray-500">Loading inventory...</p>
+          ) : filteredProducts.length === 0 ? (
+            <p className="text-gray-500 col-span-3 text-center">No products found.</p>
           ) : filteredProducts.map((product) => (
             <div 
               key={product.id} 
@@ -97,7 +139,7 @@ export default function POSPage() {
                 <p className="text-gray-500 text-sm">{product.barcode}</p>
               </div>
               <div className="mt-3 flex justify-between items-center">
-                <span className="font-bold text-blue-600">${product.price.toFixed(2)}</span>
+                <span className="font-bold text-blue-600">${Number(product.price).toFixed(2)}</span>
                 <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">
                   Stock: {product.stock_quantity}
                 </span>
@@ -123,7 +165,7 @@ export default function POSPage() {
               <div>
                 <p className="font-bold">{item.name}</p>
                 <p className="text-sm text-gray-500">
-                  {item.quantity} x ${item.price.toFixed(2)}
+                  {item.quantity} x ${Number(item.price).toFixed(2)}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -155,10 +197,11 @@ export default function POSPage() {
           </div>
 
           <button 
-            className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg disabled:opacity-50"
-            disabled={cart.length === 0}
+            onClick={handleCheckout}
+            className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg disabled:opacity-50 flex justify-center items-center"
+            disabled={cart.length === 0 || isCheckingOut}
           >
-            CHARGE ${grandTotal.toFixed(2)}
+            {isCheckingOut ? 'PROCESSING...' : `CHARGE $${grandTotal.toFixed(2)}`}
           </button>
         </div>
       </div>

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Printer, CreditCard, User, RefreshCw } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "../../../../components/ui/button";
 import {
   Card,
   CardHeader,

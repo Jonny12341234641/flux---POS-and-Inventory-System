@@ -193,12 +193,15 @@ export default function CustomersManagementPage() {
     };
 
     try {
-      const response = await fetch("/api/customers", {
-        method: currentCustomer ? "PUT" : "POST",
+      const endpoint = currentCustomer
+        ? `/api/customers/${currentCustomer.id}`
+        : "/api/customers";
+      const method = currentCustomer ? "PUT" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          currentCustomer ? { id: currentCustomer.id, ...payload } : payload
-        ),
+        body: JSON.stringify(payload),
       });
 
       if (response.status === 409) {
@@ -236,7 +239,7 @@ export default function CustomersManagementPage() {
 
     try {
       const response = await fetch(
-        `/api/customers?id=${encodeURIComponent(customer.id)}`,
+        `/api/customers/${encodeURIComponent(customer.id)}`,
         {
           method: "DELETE",
         }
