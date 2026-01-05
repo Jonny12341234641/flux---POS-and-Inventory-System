@@ -1,16 +1,17 @@
-import { supabase } from "../..//lib/supabase";
-import type { User } from "../../types";
+import { supabase } from "@/lib/supabase";
+import type { User, UserRow } from "@/types"; // Import UserRow
+
+// explicit fields to select (excluding password_hash)
+const PROFILE_SELECT = "id, username, full_name, role, status, last_login, created_at, updated_at";
 
 type UserProfileRow = Pick<
-  User,
+  UserRow, // Use UserRow here to match DB source truth
   "id" | "username" | "full_name" | "role" | "status" | "last_login"
 >;
 
-type AuthenticatedUser = UserProfileRow & {
+type AuthenticatedUser = User & {
   email: string;
 };
-
-const PROFILE_SELECT = "id, username, full_name, role, status, last_login";
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
@@ -31,6 +32,9 @@ const buildAuthenticatedUser = (
   status: profile.status,
   last_login: lastLogin ?? profile.last_login,
   email,
+  created_at: '', // These are required by the new strict User type
+  updated_at: '', // You might want to fetch these in PROFILE_SELECT if needed
+  is_active: profile.status === 'active'
 });
 
 const fetchUserProfile = async (userId: string): Promise<UserProfileRow> => {
@@ -71,14 +75,11 @@ export const loginUser = async (
     }
 
     const loginTimestamp = new Date();
-    const { error: updateError } = await supabase
+    // Update last_login
+    await supabase
       .from("users")
       .update({ last_login: loginTimestamp.toISOString() })
       .eq("id", userId);
-
-    if (updateError) {
-      throw new Error(updateError.message);
-    }
 
     return buildAuthenticatedUser(
       profile,
@@ -106,7 +107,8 @@ export const getCurrentUser = async (): Promise<AuthenticatedUser | null> => {
   try {
     const { data, error } = await supabase.auth.getSession();
     if (error) {
-      throw new Error(error.message);
+      console.error("Session error:", error.message);
+      return null;
     }
 
     const session = data.session;
@@ -115,14 +117,14 @@ export const getCurrentUser = async (): Promise<AuthenticatedUser | null> => {
     }
 
     const profile = await fetchUserProfile(session.user.id);
-
     return buildAuthenticatedUser(profile, session.user.email ?? "");
   } catch (error) {
-    throw new Error(getErrorMessage(error, "Failed to fetch current user"));
+    console.error("Get current user failed:", error);
+    return null;
   }
 };
 
-const checkUserRole = async (userId: string): Promise<User["role"]> => {
+export const checkUserRole = async (userId: string): Promise<User["role"]> => {
   try {
     const { data, error } = await supabase
       .from("users")

@@ -1,17 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { TABLES } from '@/lib/constants';
-import type { ShiftSession } from '@/types';
+import type { ShiftSession, ActionResponse, Sale } from '@/types'; // Import ActionResponse
 
-type ControllerResult<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
-
-type CashSaleRow = {
-  id: string;
-  grand_total: number | string | null;
-};
+type CashSaleRow = Pick<Sale, 'id' | 'grand_total'>;
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
@@ -75,10 +66,11 @@ const calculateCashSales = async (
   return total;
 };
 
+// Use ActionResponse<ShiftSession> instead of ControllerResult
 export const openShift = async (
   userId: string,
   startingCash: number
-): Promise<ControllerResult<ShiftSession>> => {
+): Promise<ActionResponse<ShiftSession>> => {
   try {
     if (!userId) {
       throw new Error('User ID is required');
@@ -130,7 +122,7 @@ export const openShift = async (
 
 export const getCurrentShift = async (
   userId: string
-): Promise<ControllerResult<ShiftSession | null>> => {
+): Promise<ActionResponse<ShiftSession | null>> => {
   try {
     if (!userId) {
       throw new Error('User ID is required');
@@ -150,7 +142,7 @@ export const getCurrentShift = async (
 
     const shift = data && data.length > 0 ? (data[0] as ShiftSession) : null;
 
-    return { success: true, data: shift };
+    return { success: true, data: shift }; // Ensure data handles null correctly
   } catch (error) {
     return {
       success: false,
@@ -163,7 +155,7 @@ export const closeShift = async (
   shiftId: string,
   endingCash: number,
   notes?: string
-): Promise<ControllerResult<ShiftSession>> => {
+): Promise<ActionResponse<ShiftSession>> => {
   try {
     if (!shiftId) {
       throw new Error('Shift ID is required');
