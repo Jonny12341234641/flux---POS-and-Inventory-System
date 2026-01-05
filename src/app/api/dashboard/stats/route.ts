@@ -8,21 +8,33 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const getTodayDateString = (): string => {
+  const isoDate = new Date().toISOString();
+  const [datePart] = isoDate.split("T");
+
+  if (!datePart || !/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    throw new Error("Invalid date format");
+  }
+
+  return datePart;
+};
+
 export async function GET() {
   try {
     const supabase = await createClient();
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (userError || !user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    const dateString = new Date().toISOString().split("T")[0];
+    const dateString = getTodayDateString();
 
     const salesReport = await getDailySalesReport(dateString);
     if (!salesReport.success || !salesReport.data) {
