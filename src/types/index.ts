@@ -360,3 +360,38 @@ export type Settings = {
     logo_url?: string;
     updated_at: string;
 };
+
+// 1. Standard API/Action Response
+export type ActionResponse<T = undefined> = {
+    success: boolean;
+    data?: T;
+    error?: string;
+};
+
+// 2. Extended Types (Joined Data for UI)
+export type SaleWithDetails = Sale & {
+    cashier?: { full_name: string } | null;
+    customer?: { name: string } | null;
+    sale_items?: SaleItem[]; 
+};
+
+export type PurchaseOrderWithDetails = PurchaseOrder & {
+    supplier?: { name: string } | null;
+    purchase_items?: PurchaseItem[];
+};
+
+export type StockMovementWithDetails = StockMovement & {
+    product?: { name: string; barcode: string };
+    creator?: { full_name: string };
+};
+
+// 3. Form Input Types
+export type ProductFormData = Omit<Product, 'id' | 'created_at' | 'updated_at' | 'is_active'>;
+export type SupplierFormData = Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'is_active'>;
+export type CustomerFormData = Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'is_active' | 'loyalty_points'>;
+
+export type CartItem = {
+    product: Product; // Full product object for UI display
+    quantity: number;
+    discount?: number; // Per unit or total depending on logic
+};
