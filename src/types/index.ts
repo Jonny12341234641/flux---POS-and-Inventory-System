@@ -1,6 +1,11 @@
+// =========================================
+// FLUX RETAIL - CENTRAL TYPE DEFINITIONS
+// =========================================
+
 // --- 1. SECURITY & USERS ---
 
-// Raw Database Row (Internal use only)
+// Internal Database Row (Includes Sensitive Data)
+// ⚠️ Use this ONLY in backend controllers (authController, etc.)
 export type UserRow = {
     id: string;
     username: string;
@@ -9,11 +14,14 @@ export type UserRow = {
     role: 'admin' | 'cashier';
     status: 'active' | 'inactive';
     last_login?: string;
-    created_at?: string;
+    created_at: string;
+    updated_at?: string;
 };
 
-// Safe Frontend Type (Public use)
+// Safe Frontend Type (Public Data)
+// ✅ Use this in your UI components
 export type User = Omit<UserRow, 'password_hash'>;
+
 
 // --- 2. INVENTORY MANAGEMENT ---
 
@@ -22,9 +30,9 @@ export type Category = {
     name: string;
     description?: string;
     color_code?: string;
-    is_active?: boolean;
-    created_at?: string;
-    updated_at?: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
 };
 
 export type Supplier = {
@@ -46,26 +54,27 @@ export type Product = {
     name: string;
     description?: string;
     category_id: string;
-
-    // Financials (store in cents or strictly round to 2 decimals)
-    price: number;
+    
+    // Financials
+    // Note: Store as decimals (e.g., 10.99) or cents (1099) consistently.
+    price: number; 
     cost_price: number;
-
-    // Taxation overrides
-    tax_rate?: number; // Specific tax for this item (e.g. 0 for essential food)
-
+    
+    // Taxation & Inventory
+    tax_rate?: number; // Override default store tax if needed (e.g., 0 for exempt items)
     stock_quantity: number;
-    unit: string; // e.g., 'pcs', 'kg', 'liter'
+    unit: string; // e.g., 'pcs', 'kg', 'box'
     reorder_level: number;
     image_url?: string;
-
-    // Variant Handling (Optional but recommended for retail)
-    attributes?: { size?: string; color?: string; material?: string };
-
+    
+    // Variants (Optional JSONB structure for simple variants)
+    attributes?: { size?: string; color?: string; material?: string }; 
+    
     is_active: boolean;
     created_at: string;
     updated_at: string;
 };
+
 
 // --- 3. BUYING (SUPPLY CHAIN) ---
 
@@ -74,7 +83,7 @@ export type PurchaseOrder = {
     supplier_id: string;
     reference_number?: string;
     total_amount: number;
-    order_date: string;
+    order_date: string; // Date of issuance
     expected_date?: string;
     status: 'pending' | 'received' | 'cancelled';
     created_by: string; // User ID
@@ -90,8 +99,9 @@ export type PurchaseItem = {
     quantity: number;
     unit_cost: number;
     total_cost: number;
-    expiry_date?: string;
+    expiry_date?: string; 
 };
+
 
 // --- 4. SELLING (TRANSACTIONS) ---
 
@@ -100,9 +110,9 @@ export type Customer = {
     name: string;
     phone: string;
     email?: string;
-    address?: string; // Consider breaking into: street, city, state, zip
+    address?: string;
     loyalty_points: number;
-    tax_id?: string;
+    tax_id?: string; // For business customers
     is_active: boolean;
     created_at: string;
     updated_at: string;
@@ -113,18 +123,19 @@ export type Sale = {
     receipt_number: string;
     cashier_id: string;
     customer_id?: string;
-
+    
     // Financials
     sub_total: number;
     tax_total: number;
     discount_total: number;
     grand_total: number;
-
-    // Payment Summary (Detailed payments should be in a separate relation if supporting split tender)
-    payment_method: 'cash' | 'card' | 'bank_transfer' | 'split';
+    
+    // Payment Method
+    // 'split' implies looking at the 'payments' relation for details
+    payment_method: 'cash' | 'card' | 'bank_transfer' | 'split'; 
     amount_paid: number;
     change_given: number;
-
+    
     status: 'completed' | 'refunded' | 'voided' | 'draft';
     created_at: string;
 };
@@ -138,25 +149,27 @@ export type SaleItem = {
     sub_total: number;
     discount: number;
     tax_amount: number;
-    note?: string; // Useful for special instructions (e.g., "No onions")
+    note?: string; // e.g., "No sugar"
 };
 
-// New: Payment Record (For Split Payments/Audit)
+// New: For handling Split Payments (Cash + Card)
 export type SalePayment = {
     id: string;
     sale_id: string;
     amount: number;
     method: 'cash' | 'card' | 'bank_transfer';
-    reference_id?: string; // Terminal transaction ID
+    reference_id?: string; // Transaction ID from terminal
     created_at: string;
 };
+
 
 // --- 5. AUDITING & LOGS ---
 
 export type StockMovement = {
     id: string;
     product_id: string;
-    type: 'sale' | 'purchase' | 'return' | 'adjustment' | 'damage';
+    // Includes 'damage' matching your inventoryController logic
+    type: 'sale' | 'purchase' | 'return' | 'adjustment' | 'damage'; 
     quantity_change: number;
     reference_id?: string; // Sale ID or PO ID
     remarks?: string;
@@ -178,6 +191,7 @@ export type ShiftSession = {
     notes?: string;
 };
 
+
 // --- 6. CONFIGURATION ---
 
 export type Settings = {
@@ -194,20 +208,34 @@ export type Settings = {
     updated_at: string;
 };
 
-// --- 7. SHARED UTILITIES & DTOs ---
 
+// --- 7. APPLICATION UTILITIES (DTOs & Responses) ---
+
+// Standard API Response Wrapper
 export type ActionResponse<T = undefined> = {
     success: boolean;
     data?: T;
     error?: string;
+    message?: string; // Optional success message
 };
 
-// Extended Types (For UI)
+export type PaginatedResponse<T> = ActionResponse<T[]> & {
+    metadata: {
+        current_page: number;
+        total_pages: number;
+        total_items: number;
+        items_per_page: number;
+    }
+};
+
+// --- Extended Types (For UI Display) ---
+// These join data together so your Table components are happy
+
 export type SaleWithDetails = Sale & {
     cashier?: { full_name: string } | null;
     customer?: { name: string } | null;
-    sale_items?: SaleItem[];
-    payments?: SalePayment[]; // Added support for split payments
+    sale_items?: SaleItem[]; 
+    payments?: SalePayment[];
 };
 
 export type PurchaseOrderWithDetails = PurchaseOrder & {
@@ -220,22 +248,16 @@ export type StockMovementWithDetails = StockMovement & {
     creator?: { full_name: string };
 };
 
-// Input Types
-export type ProductFormData = Omit<
-    Product,
-    'id' | 'created_at' | 'updated_at' | 'is_active'
->;
-export type SupplierFormData = Omit<
-    Supplier,
-    'id' | 'created_at' | 'updated_at' | 'is_active'
->;
-export type CustomerFormData = Omit<
-    Customer,
-    'id' | 'created_at' | 'updated_at' | 'is_active' | 'loyalty_points'
->;
+// --- Form Input Types (DTOs) ---
+// Use these in your React Forms
+
+export type ProductFormData = Omit<Product, 'id' | 'created_at' | 'updated_at' | 'is_active'>;
+export type SupplierFormData = Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'is_active'>;
+export type CustomerFormData = Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'is_active' | 'loyalty_points'>;
 
 export type CartItem = {
-    product: Product;
+    product: Product; // Full product object for display
     quantity: number;
     discount?: number;
+    tax_amount?: number;
 };
