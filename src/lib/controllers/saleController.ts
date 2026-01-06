@@ -659,7 +659,7 @@ export const createSale = async (
 
     if (paymentSummary.payments.length > 0) {
       const paymentsToInsert = paymentSummary.payments.map((payment) => ({
-        sale_id: createdSale.id,
+        sale_id: createdSale!.id,
         amount: payment.amount,
         method: payment.method,
         reference_id: payment.reference_id ?? null,
@@ -680,7 +680,7 @@ export const createSale = async (
     }
 
     const itemsToInsert = computedItems.map((item) => ({
-      sale_id: createdSale.id,
+      sale_id: createdSale!.id,
       product_id: item.productId,
       quantity: item.quantity,
       unit_price: item.unitPrice,
