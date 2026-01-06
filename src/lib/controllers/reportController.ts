@@ -214,9 +214,18 @@ export const getStockMovements = async (
       throw new Error(error.message);
     }
 
+    const rawData = (data ?? []) as any[];
+    const movements = rawData.map((item) => ({
+      ...item,
+      product: Array.isArray(item.product) ? item.product[0] : item.product,
+      created_by_user: Array.isArray(item.created_by_user)
+        ? item.created_by_user[0]
+        : item.created_by_user,
+    }));
+
     return {
       success: true,
-      data: (data ?? []) as StockMovementWithRelations[],
+      data: movements as StockMovementWithRelations[],
     };
   } catch (error) {
     return {
@@ -344,7 +353,13 @@ export const getProfitSummary = async (
       throw new Error(error.message);
     }
 
-    const items = (data ?? []) as SaleItemWithProduct[];
+    const rawItems = (data ?? []) as any[];
+    const items = rawItems.map((item) => ({
+      ...item,
+      product: Array.isArray(item.product) ? item.product[0] : item.product,
+      sale: Array.isArray(item.sale) ? item.sale[0] : item.sale,
+    })) as SaleItemWithProduct[];
+
     const batchIds = new Set<string>();
 
     for (const item of items) {
@@ -439,7 +454,7 @@ export const getTopSellingProducts = async (
       throw new Error(error.message);
     }
 
-    const items = (data ?? []) as SaleItemWithProduct[];
+    const items = (data ?? []) as any[];
     const totals = new Map<string, TopSellerRow>();
 
     for (const item of items) {
@@ -456,9 +471,12 @@ export const getTopSellingProducts = async (
         existing.quantity_sold += quantity;
         existing.total_revenue += revenue;
       } else {
+        const productObj = Array.isArray(item.product)
+          ? item.product[0]
+          : item.product;
         totals.set(productId, {
           product_id: productId,
-          product_name: item.product?.name ?? 'Unknown product',
+          product_name: productObj?.name ?? 'Unknown product',
           quantity_sold: quantity,
           total_revenue: revenue,
         });
@@ -503,7 +521,12 @@ export const getExpiringBatchReport = async (
       throw new Error(error.message);
     }
 
-    const rows = (data ?? []) as ProductBatchRow[];
+    const rawRows = (data ?? []) as any[];
+    const rows = rawRows.map((row) => ({
+      ...row,
+      product: Array.isArray(row.product) ? row.product[0] : row.product,
+    })) as ProductBatchRow[];
+
     const batches = rows.map((batch) => {
       const quantityRemaining = parseAmount(
         batch.quantity_remaining,
