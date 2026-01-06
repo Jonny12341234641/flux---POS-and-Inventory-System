@@ -283,3 +283,49 @@ export type AuditLog = {
     ip_address?: string;
     created_at: string;
 };
+
+// --- 8. ADVANCED INVENTORY & BATCHING ---
+
+export type ProductBatch = {
+    id: string;
+    product_id: string;
+    batch_number: string | null;
+    supplier_id?: string;
+    purchase_item_id?: string; // Link to original PO
+    quantity_initial: number;
+    quantity_remaining: number;
+    cost_price_at_purchase: number; // Locks in the cost for profit calculation
+    expiry_date?: string;
+    created_at: string;
+    updated_at: string;
+};
+
+// --- 9. RETURNS & REFUNDS ---
+
+export type ReturnRequest = {
+    id: string;
+    sale_id: string;
+    return_number: string;
+    status: 'pending' | 'approved' | 'rejected' | 'completed';
+    refund_amount: number;
+    reason: string;
+    restock_items: boolean; // Do items go back to inventory?
+    approved_by?: string; // User ID
+    processed_at?: string;
+    created_at: string;
+    updated_at: string;
+};
+
+// --- 10. PROMOTIONS (Optional but recommended) ---
+
+export type Promotion = {
+    id: string;
+    name: string;
+    code?: string;
+    type: 'percentage' | 'fixed_amount';
+    value: number;
+    start_date: string;
+    end_date: string;
+    min_order_value?: number;
+    is_active: boolean;
+};

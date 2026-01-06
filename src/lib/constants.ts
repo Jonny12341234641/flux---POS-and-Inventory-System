@@ -15,7 +15,9 @@ export const TABLES = {
   SALES: 'sales',
   SALE_ITEMS: 'sale_items',
   SALE_PAYMENTS: 'sale_payments',
+  PRODUCT_BATCHES: 'product_batches',
   STOCK_MOVEMENTS: 'stock_movements',
+  RETURN_REQUESTS: 'return_requests',
   SHIFT_SESSIONS: 'shift_sessions',
   SETTINGS: 'settings',
 } as const;
