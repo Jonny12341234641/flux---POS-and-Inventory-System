@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase";
-import type { User, UserRow } from "@/types"; // Import UserRow
+import { supabase } from "../../lib/supabase";
+import type { User, UserRow } from "../../types"; // Import UserRow
 
 // explicit fields to select (excluding password_hash)
 const PROFILE_SELECT = "id, username, full_name, role, status, last_login, created_at, updated_at";

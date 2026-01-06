@@ -1,15 +1,11 @@
 import { supabase } from '../../lib/supabase';
-import type { Category, Product, StockMovement, Supplier, ActionResponse } from '../../types';
+import type { Category, Product, StockMovement, ActionResponse } from '../../types';
 import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
 
 // Removed local ControllerResult definition
 
 type CategoryInsert = Omit<Category, 'id' | 'created_at' | 'updated_at'>;
 type CategoryUpdate = Partial<CategoryInsert>;
-type SupplierInsert = Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'is_active'> & {
-  is_active?: boolean;
-};
-type SupplierUpdate = Partial<SupplierInsert>;
 type ProductInsert = Omit<
   Product,
   'id' | 'created_at' | 'updated_at' | 'stock_quantity' | 'is_active'
@@ -148,104 +144,6 @@ export const deleteCategory = async (
     return {
       success: false,
       error: getErrorMessage(error, 'Failed to delete category'),
-    };
-  }
-};
-
-export const getSuppliers = async (): Promise<ActionResponse<Supplier[]>> => {
-  try {
-    const { data, error } = await supabase
-      .from(TABLES.SUPPLIERS)
-      .select('*')
-      .eq('is_active', true)
-      .order('name');
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return { success: true, data: (data ?? []) as Supplier[] };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, 'Failed to fetch suppliers'),
-    };
-  }
-};
-
-export const createSupplier = async (
-  data: SupplierInsert
-): Promise<ActionResponse<Supplier>> => {
-  try {
-    const payload: SupplierInsert = {
-      ...data,
-      is_active: data.is_active ?? true,
-    };
-
-    const { data: supplier, error } = await supabase
-      .from(TABLES.SUPPLIERS)
-      .insert(payload)
-      .select('*')
-      .single();
-
-    if (error || !supplier) {
-      throw new Error(error?.message ?? 'Failed to create supplier');
-    }
-
-    return { success: true, data: supplier as Supplier };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, 'Failed to create supplier'),
-    };
-  }
-};
-
-export const updateSupplier = async (
-  id: string,
-  data: SupplierUpdate
-): Promise<ActionResponse<Supplier>> => {
-  try {
-    const { data: supplier, error } = await supabase
-      .from(TABLES.SUPPLIERS)
-      .update(data)
-      .eq('id', id)
-      .select('*')
-      .single();
-
-    if (error || !supplier) {
-      throw new Error(error?.message ?? 'Failed to update supplier');
-    }
-
-    return { success: true, data: supplier as Supplier };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, 'Failed to update supplier'),
-    };
-  }
-};
-
-export const deleteSupplier = async (
-  id: string
-): Promise<ActionResponse<Supplier>> => {
-  try {
-    const { data: supplier, error } = await supabase
-      .from(TABLES.SUPPLIERS)
-      .update({ is_active: false })
-      .eq('id', id)
-      .select('*')
-      .single();
-
-    if (error || !supplier) {
-      throw new Error(error?.message ?? 'Failed to delete supplier');
-    }
-
-    return { success: true, data: supplier as Supplier };
-  } catch (error) {
-    return {
-      success: false,
-      error: getErrorMessage(error, 'Failed to delete supplier'),
     };
   }
 };
