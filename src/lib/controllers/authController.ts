@@ -6,7 +6,7 @@ const PROFILE_SELECT = "id, username, full_name, role, status, last_login, creat
 
 type UserProfileRow = Pick<
   UserRow, // Use UserRow here to match DB source truth
-  "id" | "username" | "full_name" | "role" | "status" | "last_login"
+  "id" | "username" | "full_name" | "role" | "status" | "last_login" | "created_at" | "updated_at"
 >;
 
 type AuthenticatedUser = User & {
@@ -32,8 +32,8 @@ const buildAuthenticatedUser = (
   status: profile.status,
   last_login: lastLogin ?? profile.last_login,
   email,
-  created_at: '', // These are required by the new strict User type
-  updated_at: '', // You might want to fetch these in PROFILE_SELECT if needed
+  created_at: profile.created_at ?? new Date().toISOString(), // Fix: use real date
+  updated_at: profile.updated_at ?? '', 
   is_active: profile.status === 'active'
 });
 

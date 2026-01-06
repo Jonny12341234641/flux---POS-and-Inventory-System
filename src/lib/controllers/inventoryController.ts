@@ -1,12 +1,8 @@
 import { supabase } from '../../lib/supabase';
-import type { Category, Product, StockMovement, Supplier } from '../../types';
+import type { Category, Product, StockMovement, Supplier, ActionResponse } from '../../types';
 import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
 
-type ControllerResult<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
+// Removed local ControllerResult definition
 
 type CategoryInsert = Omit<Category, 'id' | 'created_at' | 'updated_at'>;
 type CategoryUpdate = Partial<CategoryInsert>;
@@ -58,7 +54,7 @@ const ensureBarcodeAvailable = async (
   }
 };
 
-export const getCategories = async (): Promise<ControllerResult<Category[]>> => {
+export const getCategories = async (): Promise<ActionResponse<Category[]>> => {
   try {
     const { data, error } = await supabase
       .from(TABLES.CATEGORIES)
@@ -81,7 +77,7 @@ export const getCategories = async (): Promise<ControllerResult<Category[]>> => 
 
 export const createCategory = async (
   data: CategoryInsert
-): Promise<ControllerResult<Category>> => {
+): Promise<ActionResponse<Category>> => {
   try {
     const payload: CategoryInsert = {
       ...data,
@@ -110,7 +106,7 @@ export const createCategory = async (
 export const updateCategory = async (
   id: string,
   data: CategoryUpdate
-): Promise<ControllerResult<Category>> => {
+): Promise<ActionResponse<Category>> => {
   try {
     const { data: category, error } = await supabase
       .from(TABLES.CATEGORIES)
@@ -134,7 +130,7 @@ export const updateCategory = async (
 
 export const deleteCategory = async (
   id: string
-): Promise<ControllerResult<Category>> => {
+): Promise<ActionResponse<Category>> => {
   try {
     const { data: category, error } = await supabase
       .from(TABLES.CATEGORIES)
@@ -156,7 +152,7 @@ export const deleteCategory = async (
   }
 };
 
-export const getSuppliers = async (): Promise<ControllerResult<Supplier[]>> => {
+export const getSuppliers = async (): Promise<ActionResponse<Supplier[]>> => {
   try {
     const { data, error } = await supabase
       .from(TABLES.SUPPLIERS)
@@ -179,7 +175,7 @@ export const getSuppliers = async (): Promise<ControllerResult<Supplier[]>> => {
 
 export const createSupplier = async (
   data: SupplierInsert
-): Promise<ControllerResult<Supplier>> => {
+): Promise<ActionResponse<Supplier>> => {
   try {
     const payload: SupplierInsert = {
       ...data,
@@ -208,7 +204,7 @@ export const createSupplier = async (
 export const updateSupplier = async (
   id: string,
   data: SupplierUpdate
-): Promise<ControllerResult<Supplier>> => {
+): Promise<ActionResponse<Supplier>> => {
   try {
     const { data: supplier, error } = await supabase
       .from(TABLES.SUPPLIERS)
@@ -232,7 +228,7 @@ export const updateSupplier = async (
 
 export const deleteSupplier = async (
   id: string
-): Promise<ControllerResult<Supplier>> => {
+): Promise<ActionResponse<Supplier>> => {
   try {
     const { data: supplier, error } = await supabase
       .from(TABLES.SUPPLIERS)
@@ -257,7 +253,7 @@ export const deleteSupplier = async (
 export const getProducts = async (
   query = '',
   page = 1
-): Promise<ControllerResult<Product[]>> => {
+): Promise<ActionResponse<Product[]>> => {
   try {
     const trimmedQuery = query.trim();
     const safePage = page > 0 ? page : 1;
@@ -293,7 +289,7 @@ export const getProducts = async (
 
 export const getProductById = async (
   id: string
-): Promise<ControllerResult<Product>> => {
+): Promise<ActionResponse<Product>> => {
   try {
     const { data, error } = await supabase
       .from(TABLES.PRODUCTS)
@@ -315,7 +311,7 @@ export const getProductById = async (
 };
 
 export const getLowStockProducts = async (): Promise<
-  ControllerResult<Product[]>
+  ActionResponse<Product[]>
 > => {
   try {
     const { data, error } = await supabase
@@ -342,7 +338,7 @@ export const getLowStockProducts = async (): Promise<
 
 export const createProduct = async (
   data: ProductInsert
-): Promise<ControllerResult<Product>> => {
+): Promise<ActionResponse<Product>> => {
   try {
     await ensureBarcodeAvailable(data.barcode);
 
@@ -374,7 +370,7 @@ export const createProduct = async (
 export const updateProduct = async (
   id: string,
   data: ProductUpdate
-): Promise<ControllerResult<Product>> => {
+): Promise<ActionResponse<Product>> => {
   try {
     if (data.barcode) {
       await ensureBarcodeAvailable(data.barcode, id);
@@ -402,7 +398,7 @@ export const updateProduct = async (
 
 export const deleteProduct = async (
   id: string
-): Promise<ControllerResult<Product>> => {
+): Promise<ActionResponse<Product>> => {
   try {
     const { data: product, error } = await supabase
       .from(TABLES.PRODUCTS)
@@ -429,7 +425,7 @@ export const adjustStock = async (
   quantityChange: number,
   reason: string,
   userId: string
-): Promise<ControllerResult<{ movement: StockMovement; product: Product }>> => {
+): Promise<ActionResponse<{ movement: StockMovement; product: Product }>> => {
   try {
     const { data: product, error: productError } = await supabase
       .from(TABLES.PRODUCTS)

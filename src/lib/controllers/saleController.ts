@@ -1,12 +1,8 @@
 import { supabase } from '../../lib/supabase';
 import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
-import type { Product, Sale, SaleItem, StockMovement } from '../../types';
+import type { Product, Sale, SaleItem, StockMovement, ActionResponse, SaleWithDetails } from '../../types';
 
-type ControllerResult<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
+// Removed local ControllerResult
 
 type SaleInput = {
   payment_method: Sale['payment_method'];
@@ -28,10 +24,11 @@ type DateRange = {
   to?: string;
 };
 
-type SaleWithRelations = Sale & {
-  cashier?: { full_name: string } | null;
-  customer?: { name: string } | null;
-};
+// SaleWithRelations replaced by the global SaleWithDetails (logic is similar)
+// But we can keep SaleWithRelations locally if we want strictly those 2 relations,
+// or just use SaleWithDetails which is more robust.
+// For now, I'll update the alias to match the logic:
+type SaleWithRelations = SaleWithDetails;
 
 type SaleWithItems = Sale & {
   sale_items: SaleItem[];
@@ -195,7 +192,7 @@ export const createSale = async (
   saleDataOrPayload: SaleInput | CreateSalePayload,
   itemsInput?: SaleItemInput[],
   userIdInput?: string
-): Promise<ControllerResult<SaleResult>> => {
+): Promise<ActionResponse<SaleResult>> => {
   const processed: ProcessedMovement[] = [];
 
   try {
@@ -378,7 +375,7 @@ export const saveDraft = async (
   saleData: SaleInput,
   items: SaleItemInput[],
   userId: string
-): Promise<ControllerResult<SaleResult>> => {
+): Promise<ActionResponse<SaleResult>> => {
   try {
     if (!items.length) {
       throw new Error('Draft requires at least one item');
@@ -453,7 +450,7 @@ export const saveDraft = async (
   }
 };
 
-export const getDrafts = async (): Promise<ControllerResult<Sale[]>> => {
+export const getDrafts = async (): Promise<ActionResponse<Sale[]>> => {
   try {
     const { data, error } = await supabase
       .from(TABLES.SALES)
@@ -477,7 +474,7 @@ export const getDrafts = async (): Promise<ControllerResult<Sale[]>> => {
 export const refundSale = async (
   saleId: string,
   userId: string
-): Promise<ControllerResult<{ sale: Sale; movements: StockMovement[] }>> => {
+): Promise<ActionResponse<{ sale: Sale; movements: StockMovement[] }>> => {
   const processed: ProcessedMovement[] = [];
   let previousStatus: Sale['status'] | null = null;
   let statusUpdated = false;
@@ -650,7 +647,7 @@ export const refundSale = async (
 export const getSales = async (
   page = 1,
   dateRange?: DateRange
-): Promise<ControllerResult<SaleWithRelations[]>> => {
+): Promise<ActionResponse<SaleWithRelations[]>> => {
   try {
     const safePage = page > 0 ? page : 1;
     const from = (safePage - 1) * ITEMS_PER_PAGE;
@@ -689,7 +686,7 @@ export const getSales = async (
 
 export const getSaleById = async (
   id: string
-): Promise<ControllerResult<SaleWithItems>> => {
+): Promise<ActionResponse<SaleWithItems>> => {
   try {
     const { data, error } = await supabase
       .from(TABLES.SALES)
