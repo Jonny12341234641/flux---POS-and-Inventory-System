@@ -87,9 +87,11 @@ export type PurchaseOrder = {
     total_amount: number;
     order_date: string; // Date of issuance
     expected_date?: string;
-    status: 'pending' | 'received' | 'cancelled';
+    status: 'pending' | 'received' | 'cancelled' | 'partially_received';
+    payment_status: 'paid' | 'unpaid' | 'partial';
     created_by: string; // User ID
     notes?: string;
+    return_total?: number;
     created_at: string;
     updated_at: string;
 };
@@ -99,6 +101,7 @@ export type PurchaseItem = {
     purchase_order_id: string;
     product_id: string;
     quantity: number;
+    quantity_received?: number;
     unit_cost: number;
     total_cost: number;
     expiry_date?: string; 
