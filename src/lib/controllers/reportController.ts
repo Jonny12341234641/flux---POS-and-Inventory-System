@@ -178,10 +178,8 @@ const isMissingTableError = (error: unknown, tableName: string) => {
   );
 };
 
-const RETURN_REQUESTS_TABLE =
-  (TABLES as Record<string, string>).RETURN_REQUESTS ?? 'return_requests';
-const PRODUCT_BATCHES_TABLE =
-  (TABLES as Record<string, string>).PRODUCT_BATCHES ?? 'product_batches';
+const RETURN_REQUESTS_TABLE = TABLES.RETURN_REQUESTS;
+const PRODUCT_BATCHES_TABLE = TABLES.PRODUCT_BATCHES;
 
 export const getStockMovements = async (
   page = 1,
