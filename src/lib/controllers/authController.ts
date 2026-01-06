@@ -11,6 +11,7 @@ type UserProfileRow = Pick<
 
 type AuthenticatedUser = User & {
   email: string;
+  is_active: boolean;
 };
 
 const getErrorMessage = (error: unknown, fallback: string) => {
