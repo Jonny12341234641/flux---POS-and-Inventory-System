@@ -69,8 +69,8 @@ const EMAIL_REGEX =
   /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
 const getErrorMessage = (error: unknown, fallback: string) => {
-  if (error instanceof z.ZodError && error.errors.length > 0) {
-    return error.errors[0]?.message ?? fallback;
+  if (error instanceof z.ZodError && error.issues.length > 0) {
+    return error.issues[0]?.message ?? fallback;
   }
   if (error instanceof Error && error.message.trim()) {
     return error.message;
