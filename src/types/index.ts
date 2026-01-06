@@ -261,3 +261,14 @@ export type CartItem = {
     discount?: number;
     tax_amount?: number;
 };
+
+// --- 5. AUDITING & LOGS --- 
+
+export type AuditLog = {
+    id: string;
+    user_id: string;
+    action: string;
+    details?: string;
+    ip_address?: string;
+    created_at: string;
+};

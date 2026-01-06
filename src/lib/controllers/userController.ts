@@ -1,11 +1,15 @@
 import { supabase } from '../../lib/supabase';
+import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
 import type { ActionResponse, User, UserRow } from '../../types';
 
 const PROFILE_SELECT =
   'id, username, full_name, role, status, last_login, created_at, updated_at';
 
-type UserInsert = Pick<UserRow, 'username' | 'full_name' | 'role' | 'status'>;
+type UserInsert = Pick<UserRow, 'username' | 'full_name' | 'role' | 'status'> & {
+  email: string;
+  password: string;
+};
 
 type UserUpdate = Partial<Pick<UserRow, 'full_name' | 'role' | 'status'>>;
 
@@ -112,46 +116,60 @@ export const createUser = async (
   try {
     const username = data.username?.trim();
     const fullName = data.full_name?.trim();
+    const email = data.email?.trim();
+    const password = data.password;
 
-    if (!username) {
-      throw new Error('Username is required');
-    }
+    // --- Validation ---
+    if (!username) throw new Error('Username is required');
+    if (!fullName) throw new Error('Full name is required');
+    if (!email) throw new Error('Email is required');
+    if (!password || password.length < 6) throw new Error('Password must be at least 6 characters');
+    if (!data.role) throw new Error('User role is required');
 
-    if (!fullName) {
-      throw new Error('Full name is required');
-    }
-
-    if (!data.role) {
-      throw new Error('User role is required');
-    }
-
-    if (!data.status) {
-      throw new Error('User status is required');
-    }
-
+    // 1. Ensure username is unique in our DB before trying Auth
     await ensureUsernameAvailable(username);
 
-    const payload: UserInsert = {
+    // 2. COMMERCIAL GRADE: Create Identity in Supabase Auth first
+    // We use supabaseAdmin because standard clients cannot create other users
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email,
+      password: password,
+      email_confirm: true, // Auto-confirm so they can log in immediately
+      user_metadata: { full_name: fullName, username: username }
+    });
+
+    if (authError || !authUser.user) {
+      throw new Error(authError?.message ?? "Failed to create authentication account");
+    }
+
+    // 3. Insert into Public Users Table using the SAME ID
+    const payload = {
+      id: authUser.user.id, // <--- CRITICAL: Link Auth ID to DB ID
       username,
       full_name: fullName,
       role: data.role,
       status: data.status,
+      // created_at will be auto-set by DB
     };
 
-    const { data: user, error } = await supabase
+    const { data: newUser, error: dbError } = await supabase
       .from(TABLES.USERS)
       .insert(payload)
       .select(PROFILE_SELECT)
       .single();
 
-    if (error || !user) {
-      if (isDuplicateUsernameError(error)) {
+    // Rollback: If DB insert fails, delete the Auth user to prevent "orphans"
+    if (dbError || !newUser) {
+      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+      
+      if (isDuplicateUsernameError(dbError)) {
         throw new Error('Username is already taken');
       }
-      throw new Error(error?.message ?? 'Failed to create user');
+      throw new Error(dbError?.message ?? 'Failed to create user profile');
     }
 
-    return { success: true, data: user as User };
+    return { success: true, data: newUser as User };
+
   } catch (error) {
     return {
       success: false,
