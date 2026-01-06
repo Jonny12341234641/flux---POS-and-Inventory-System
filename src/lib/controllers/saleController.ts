@@ -1,14 +1,30 @@
 import { supabase } from '../../lib/supabase';
 import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
-import type { Product, Sale, SaleItem, StockMovement, ActionResponse, SaleWithDetails } from '../../types';
+import type {
+  Product,
+  Sale,
+  SaleItem,
+  StockMovement,
+  ActionResponse,
+  SaleWithDetails,
+} from '../../types';
 
 // Removed local ControllerResult
+
+type SalePaymentMethod = Exclude<Sale['payment_method'], 'split'>;
+
+type SalePaymentInput = {
+  amount: number;
+  method: SalePaymentMethod;
+  reference_id?: string;
+};
 
 type SaleInput = {
   payment_method: Sale['payment_method'];
   amount_paid: number;
   customer_id?: string | null;
   discount_total?: number;
+  payments?: SalePaymentInput[];
 };
 
 type SaleItemInput = {
@@ -65,6 +81,8 @@ type CreateSaleBody = SaleInput & {
   cashier_id?: string;
 };
 
+const SALE_PAYMENTS_TABLE = 'sale_payments';
+
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -97,6 +115,60 @@ const calculateTotals = (items: SaleItemInput[]) => {
   const taxTotal = computedItems.reduce((sum, item) => sum + item.taxAmount, 0);
 
   return { subTotal, taxTotal, computedItems };
+};
+
+const normalizeSalePayments = (saleData: SaleInput) => {
+  const payments = Array.isArray(saleData.payments) ? saleData.payments : [];
+
+  if (!payments.length) {
+    if (saleData.payment_method === 'split') {
+      throw new Error('Split payments require at least one payment entry');
+    }
+
+    return {
+      payments: [] as SalePaymentInput[],
+      amountPaid: saleData.amount_paid,
+      paymentMethod: saleData.payment_method,
+    };
+  }
+
+  const normalized = payments.map((payment, index) => {
+    const amount = Number(payment.amount);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error(`Payment ${index + 1} has an invalid amount`);
+    }
+
+    if (
+      payment.method !== 'cash' &&
+      payment.method !== 'card' &&
+      payment.method !== 'bank_transfer'
+    ) {
+      throw new Error(`Payment ${index + 1} has an invalid method`);
+    }
+
+    const referenceId =
+      typeof payment.reference_id === 'string'
+        ? payment.reference_id.trim()
+        : undefined;
+
+    return {
+      amount,
+      method: payment.method,
+      reference_id: referenceId || undefined,
+    };
+  });
+
+  const amountPaid = normalized.reduce((sum, payment) => sum + payment.amount, 0);
+  const methods = new Set(normalized.map((payment) => payment.method));
+  const paymentMethod: Sale['payment_method'] =
+    methods.size > 1 ? 'split' : normalized[0].method;
+
+  return {
+    payments: normalized,
+    amountPaid,
+    paymentMethod,
+  };
 };
 
 const rollbackProcessedMovements = async (
@@ -141,6 +213,15 @@ const cleanupSaleRecord = async (saleId: string): Promise<string[]> => {
     cleanupErrors.push(`Sale items: ${itemsError.message}`);
   }
 
+  const { error: paymentsError } = await supabase
+    .from(SALE_PAYMENTS_TABLE)
+    .delete()
+    .eq('sale_id', saleId);
+
+  if (paymentsError) {
+    cleanupErrors.push(`Sale payments: ${paymentsError.message}`);
+  }
+
   const { error: saleError } = await supabase
     .from(TABLES.SALES)
     .delete()
@@ -172,6 +253,7 @@ const resolveCreateSaleArgs = (
             amount_paid: payload.amount_paid,
             customer_id: payload.customer_id,
             discount_total: payload.discount_total,
+            payments: payload.payments,
           };
 
     return {
@@ -213,7 +295,8 @@ export const createSale = async (
     const { subTotal, taxTotal, computedItems } = calculateTotals(items);
     const discountTotal = saleData.discount_total ?? 0;
     const grandTotal = subTotal + taxTotal - discountTotal;
-    const changeGiven = saleData.amount_paid - grandTotal;
+    const paymentSummary = normalizeSalePayments(saleData);
+    const changeGiven = paymentSummary.amountPaid - grandTotal;
 
     const productIds = Array.from(new Set(items.map((item) => item.productId)));
 
@@ -250,8 +333,8 @@ export const createSale = async (
         tax_total: taxTotal,
         discount_total: discountTotal,
         grand_total: grandTotal,
-        payment_method: saleData.payment_method,
-        amount_paid: saleData.amount_paid,
+        payment_method: paymentSummary.paymentMethod,
+        amount_paid: paymentSummary.amountPaid,
         change_given: changeGiven,
         status: 'completed',
       })
@@ -263,6 +346,27 @@ export const createSale = async (
     }
 
     const createdSale = sale as Sale;
+
+    if (paymentSummary.payments.length > 0) {
+      const paymentsToInsert = paymentSummary.payments.map((payment) => ({
+        sale_id: createdSale.id,
+        amount: payment.amount,
+        method: payment.method,
+        reference_id: payment.reference_id ?? null,
+      }));
+
+      const { error: paymentsError } = await supabase
+        .from(SALE_PAYMENTS_TABLE)
+        .insert(paymentsToInsert);
+
+      if (paymentsError) {
+        const cleanupErrors = await cleanupSaleRecord(createdSale.id);
+        const cleanupNote = cleanupErrors.length
+          ? ` Cleanup failed: ${cleanupErrors.join('; ')}`
+          : '';
+        throw new Error(`${paymentsError.message}.${cleanupNote}`);
+      }
+    }
 
     const itemsToInsert = computedItems.map((item) => ({
       sale_id: createdSale.id,
