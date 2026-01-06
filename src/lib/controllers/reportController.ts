@@ -1,6 +1,12 @@
 import { supabase } from '../../lib/supabase';
 import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
-import type { Product, Sale, ShiftSession, StockMovement } from '../../types';
+import type {
+  Product,
+  Sale,
+  SaleItem,
+  ShiftSession,
+  StockMovement,
+} from '../../types';
 
 type ControllerResult<T> = {
   success: boolean;
@@ -28,18 +34,59 @@ type PaymentBreakdown = {
   bank_transfer: number;
 };
 
-type DailySalesReport = {
+type SalesReport = {
   totalRevenue: number;
   totalTax: number;
   totalDiscount: number;
+  totalRefunds: number;
+  netRevenue: number;
   transactionCount: number;
   paymentBreakdown: PaymentBreakdown;
+};
+
+type ProfitReport = {
+  totalRevenue: number;
+  totalCOGS: number;
+  grossProfit: number;
+  profitMargin: number;
+};
+
+type TopSellerRow = {
+  product_id: string;
+  product_name: string;
+  quantity_sold: number;
+  total_revenue: number;
+};
+
+type ExpiringBatch = {
+  product_name: string;
+  batch_number: string | null;
+  expiry_date: string;
+  cost_value: number;
 };
 
 type SaleTotalsRow = Pick<
   Sale,
   'grand_total' | 'tax_total' | 'discount_total' | 'payment_method'
 >;
+
+type ReturnRequestRow = {
+  refund_amount?: number | string | null;
+};
+
+type SaleItemWithProduct = SaleItem & {
+  product?: { id: string; name: string; cost_price?: number | string | null } | null;
+  batch_id?: string | null;
+};
+
+type ProductBatchRow = {
+  id: string;
+  batch_number: string | null;
+  expiry_date: string;
+  quantity_remaining: number | string;
+  cost_price_at_purchase?: number | string | null;
+  product?: { name: string; cost_price?: number | string | null } | null;
+};
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
@@ -102,6 +149,40 @@ const getUtcDayRange = (date: string) => {
   return { start: start.toISOString(), end: end.toISOString() };
 };
 
+const getUtcDateRange = (startDate: string, endDate: string) => {
+  const startRange = getUtcDayRange(startDate);
+  const endRange = getUtcDayRange(endDate);
+
+  if (
+    new Date(startRange.start).getTime() > new Date(endRange.start).getTime()
+  ) {
+    throw new Error('Start date must be on or before end date');
+  }
+
+  return { start: startRange.start, end: endRange.end };
+};
+
+const isMissingTableError = (error: unknown, tableName: string) => {
+  if (!error) {
+    return false;
+  }
+
+  const message =
+    typeof error === 'string'
+      ? error
+      : (error as { message?: string }).message ?? '';
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('does not exist') &&
+    normalized.includes(tableName.toLowerCase())
+  );
+};
+
+const RETURN_REQUESTS_TABLE =
+  (TABLES as Record<string, string>).RETURN_REQUESTS ?? 'return_requests';
+const PRODUCT_BATCHES_TABLE =
+  (TABLES as Record<string, string>).PRODUCT_BATCHES ?? 'product_batches';
+
 export const getStockMovements = async (
   page = 1,
   filter?: StockMovementFilter
@@ -145,24 +226,25 @@ export const getStockMovements = async (
   }
 };
 
-export const getDailySalesReport = async (
-  date: string
-): Promise<ControllerResult<DailySalesReport>> => {
+export const getSalesReport = async (
+  startDate: string,
+  endDate: string
+): Promise<ControllerResult<SalesReport>> => {
   try {
-    const { start, end } = getUtcDayRange(date);
+    const { start, end } = getUtcDateRange(startDate, endDate);
 
-    const { data, error } = await supabase
+    const { data: salesData, error: salesError } = await supabase
       .from(TABLES.SALES)
       .select('grand_total, tax_total, discount_total, payment_method')
       .eq('status', 'completed')
       .gte('created_at', start)
       .lt('created_at', end);
 
-    if (error) {
-      throw new Error(error.message);
+    if (salesError) {
+      throw new Error(salesError.message);
     }
 
-    const rows = (data ?? []) as SaleTotalsRow[];
+    const rows = (salesData ?? []) as SaleTotalsRow[];
     let totalRevenue = 0;
     let totalTax = 0;
     let totalDiscount = 0;
@@ -191,12 +273,32 @@ export const getDailySalesReport = async (
       }
     }
 
+    const { data: refundData, error: refundError } = await supabase
+      .from(RETURN_REQUESTS_TABLE)
+      .select('refund_amount')
+      .eq('status', 'approved')
+      .gte('created_at', start)
+      .lt('created_at', end);
+
+    if (refundError) {
+      throw new Error(refundError.message);
+    }
+
+    let totalRefunds = 0;
+    for (const refund of (refundData ?? []) as ReturnRequestRow[]) {
+      totalRefunds += parseAmount(refund.refund_amount, 'Refund amount');
+    }
+
+    const netRevenue = totalRevenue - totalRefunds;
+
     return {
       success: true,
       data: {
         totalRevenue,
         totalTax,
         totalDiscount,
+        totalRefunds,
+        netRevenue,
         transactionCount: rows.length,
         paymentBreakdown,
       },
@@ -204,7 +306,229 @@ export const getDailySalesReport = async (
   } catch (error) {
     return {
       success: false,
-      error: getErrorMessage(error, 'Failed to fetch daily sales report'),
+      error: getErrorMessage(error, 'Failed to fetch sales report'),
+    };
+  }
+};
+
+export const getDailySalesReport = async (
+  date: string
+): Promise<ControllerResult<SalesReport>> => {
+  const report = await getSalesReport(date, date);
+  if (!report.success) {
+    return {
+      success: false,
+      error: report.error ?? 'Failed to fetch daily sales report',
+    };
+  }
+  return report;
+};
+
+export const getProfitSummary = async (
+  startDate: string,
+  endDate: string
+): Promise<ControllerResult<ProfitReport>> => {
+  try {
+    const { start, end } = getUtcDateRange(startDate, endDate);
+
+    const { data, error } = await supabase
+      .from(TABLES.SALE_ITEMS)
+      .select(
+        `*, product:${TABLES.PRODUCTS}(id, name, cost_price), sale:${TABLES.SALES}!inner(created_at, status)`
+      )
+      .eq('sale.status', 'completed')
+      .gte('sale.created_at', start)
+      .lt('sale.created_at', end);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const items = (data ?? []) as SaleItemWithProduct[];
+    const batchIds = new Set<string>();
+
+    for (const item of items) {
+      if (item.batch_id) {
+        batchIds.add(item.batch_id);
+      }
+    }
+
+    const batchCostMap = new Map<string, number>();
+
+    if (batchIds.size > 0) {
+      const { data: batchData, error: batchError } = await supabase
+        .from(PRODUCT_BATCHES_TABLE)
+        .select('id, cost_price_at_purchase')
+        .in('id', Array.from(batchIds));
+
+      if (batchError) {
+        if (!isMissingTableError(batchError, PRODUCT_BATCHES_TABLE)) {
+          throw new Error(batchError.message);
+        }
+      } else {
+        for (const batch of batchData ?? []) {
+          const batchRow = batch as { id: string; cost_price_at_purchase?: unknown };
+          const cost = parseAmount(
+            batchRow.cost_price_at_purchase,
+            'Batch cost'
+          );
+          batchCostMap.set(batchRow.id, cost);
+        }
+      }
+    }
+
+    let totalRevenue = 0;
+    let totalCOGS = 0;
+
+    for (const item of items) {
+      const quantity = parseAmount(item.quantity, 'Sale item quantity');
+      const lineRevenue = parseAmount(item.sub_total, 'Sale item revenue');
+      const productCost = parseAmount(item.product?.cost_price, 'Product cost');
+      const batchCost = item.batch_id
+        ? batchCostMap.get(item.batch_id)
+        : undefined;
+      const unitCost =
+        typeof batchCost === 'number' && Number.isFinite(batchCost)
+          ? batchCost
+          : productCost;
+
+      totalRevenue += lineRevenue;
+      totalCOGS += quantity * unitCost;
+    }
+
+    const grossProfit = totalRevenue - totalCOGS;
+    const profitMargin =
+      totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+
+    return {
+      success: true,
+      data: {
+        totalRevenue,
+        totalCOGS,
+        grossProfit,
+        profitMargin,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to fetch profit summary'),
+    };
+  }
+};
+
+export const getTopSellingProducts = async (
+  startDate: string,
+  endDate: string,
+  limit = 10
+): Promise<ControllerResult<TopSellerRow[]>> => {
+  try {
+    const { start, end } = getUtcDateRange(startDate, endDate);
+    const safeLimit = limit > 0 ? limit : 10;
+
+    const { data, error } = await supabase
+      .from(TABLES.SALE_ITEMS)
+      .select(
+        `product_id, quantity, sub_total, product:${TABLES.PRODUCTS}(id, name), sale:${TABLES.SALES}!inner(created_at, status)`
+      )
+      .eq('sale.status', 'completed')
+      .gte('sale.created_at', start)
+      .lt('sale.created_at', end);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const items = (data ?? []) as SaleItemWithProduct[];
+    const totals = new Map<string, TopSellerRow>();
+
+    for (const item of items) {
+      const productId = item.product_id;
+      if (!productId) {
+        continue;
+      }
+
+      const quantity = parseAmount(item.quantity, 'Sale item quantity');
+      const revenue = parseAmount(item.sub_total, 'Sale item revenue');
+      const existing = totals.get(productId);
+
+      if (existing) {
+        existing.quantity_sold += quantity;
+        existing.total_revenue += revenue;
+      } else {
+        totals.set(productId, {
+          product_id: productId,
+          product_name: item.product?.name ?? 'Unknown product',
+          quantity_sold: quantity,
+          total_revenue: revenue,
+        });
+      }
+    }
+
+    const sorted = Array.from(totals.values())
+      .sort((a, b) => b.quantity_sold - a.quantity_sold)
+      .slice(0, safeLimit);
+
+    return { success: true, data: sorted };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to fetch top selling products'),
+    };
+  }
+};
+
+export const getExpiringBatchReport = async (
+  daysThreshold = 7
+): Promise<ControllerResult<ExpiringBatch[]>> => {
+  try {
+    const safeThreshold =
+      Number.isFinite(daysThreshold) && daysThreshold > 0
+        ? Math.floor(daysThreshold)
+        : 0;
+    const targetDate = new Date();
+    targetDate.setUTCDate(targetDate.getUTCDate() + safeThreshold);
+    const targetIso = targetDate.toISOString();
+
+    const { data, error } = await supabase
+      .from(PRODUCT_BATCHES_TABLE)
+      .select(
+        `id, batch_number, expiry_date, quantity_remaining, cost_price_at_purchase, product:${TABLES.PRODUCTS}(name, cost_price)`
+      )
+      .lte('expiry_date', targetIso)
+      .gt('quantity_remaining', 0)
+      .order('expiry_date', { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const rows = (data ?? []) as ProductBatchRow[];
+    const batches = rows.map((batch) => {
+      const quantityRemaining = parseAmount(
+        batch.quantity_remaining,
+        'Batch quantity'
+      );
+      const unitCost = parseAmount(
+        typeof batch.cost_price_at_purchase !== 'undefined'
+          ? batch.cost_price_at_purchase
+          : batch.product?.cost_price,
+        'Batch cost'
+      );
+
+      return {
+        product_name: batch.product?.name ?? 'Unknown product',
+        batch_number: batch.batch_number ?? null,
+        expiry_date: batch.expiry_date,
+        cost_value: quantityRemaining * unitCost,
+      };
+    });
+
+    return { success: true, data: batches };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to fetch expiring batch report'),
     };
   }
 };
@@ -233,6 +557,44 @@ export const getShiftHistory = async (
     return {
       success: false,
       error: getErrorMessage(error, 'Failed to fetch shift history'),
+    };
+  }
+};
+
+export const getShiftDiscrepancyReport = async (
+  page = 1
+): Promise<ControllerResult<ShiftHistoryRow[]>> => {
+  try {
+    const history = await getShiftHistory(page);
+
+    if (!history.success || !history.data) {
+      return {
+        success: false,
+        error: history.error ?? 'Failed to fetch shift discrepancy report',
+      };
+    }
+
+    const tolerance = 1;
+    const discrepancies = history.data
+      .map((row) => ({
+        row,
+        difference: parseAmount(
+          typeof row.difference === 'undefined' ? 0 : row.difference,
+          'Shift difference'
+        ),
+      }))
+      .filter(({ difference }) => Math.abs(difference) >= tolerance)
+      .sort(
+        (a, b) =>
+          Math.abs(b.difference) - Math.abs(a.difference)
+      )
+      .map(({ row }) => row);
+
+    return { success: true, data: discrepancies };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to fetch shift discrepancy report'),
     };
   }
 };
