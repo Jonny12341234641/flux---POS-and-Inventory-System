@@ -4,6 +4,7 @@ import type {
   Product,
   Sale,
   SaleItem,
+  SalePayment,
   StockMovement,
   ActionResponse,
   SaleWithDetails,
@@ -53,6 +54,7 @@ type SaleWithItems = Sale & {
 type SaleResult = {
   sale: Sale;
   items: SaleItem[];
+  payments: SalePayment[];
 };
 
 type ProductStockRow = Pick<Product, 'id' | 'name' | 'stock_quantity'>;
@@ -80,8 +82,6 @@ type CreateSaleBody = SaleInput & {
   userId?: string;
   cashier_id?: string;
 };
-
-const SALE_PAYMENTS_TABLE = 'sale_payments';
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
@@ -214,7 +214,7 @@ const cleanupSaleRecord = async (saleId: string): Promise<string[]> => {
   }
 
   const { error: paymentsError } = await supabase
-    .from(SALE_PAYMENTS_TABLE)
+    .from(TABLES.SALE_PAYMENTS)
     .delete()
     .eq('sale_id', saleId);
 
@@ -347,6 +347,8 @@ export const createSale = async (
 
     const createdSale = sale as Sale;
 
+    let insertedPaymentsData: SalePayment[] = [];
+
     if (paymentSummary.payments.length > 0) {
       const paymentsToInsert = paymentSummary.payments.map((payment) => ({
         sale_id: createdSale.id,
@@ -355,9 +357,10 @@ export const createSale = async (
         reference_id: payment.reference_id ?? null,
       }));
 
-      const { error: paymentsError } = await supabase
-        .from(SALE_PAYMENTS_TABLE)
-        .insert(paymentsToInsert);
+      const { data: insertedPayments, error: paymentsError } = await supabase
+        .from(TABLES.SALE_PAYMENTS)
+        .insert(paymentsToInsert)
+        .select('*');
 
       if (paymentsError) {
         const cleanupErrors = await cleanupSaleRecord(createdSale.id);
@@ -365,6 +368,10 @@ export const createSale = async (
           ? ` Cleanup failed: ${cleanupErrors.join('; ')}`
           : '';
         throw new Error(`${paymentsError.message}.${cleanupNote}`);
+      }
+
+      if (insertedPayments) {
+        insertedPaymentsData = insertedPayments as SalePayment[];
       }
     }
 
@@ -452,6 +459,7 @@ export const createSale = async (
       data: {
         sale: createdSale,
         items: (insertedItems ?? []) as SaleItem[],
+        payments: insertedPaymentsData,
       },
     };
   } catch (error) {
@@ -544,6 +552,7 @@ export const saveDraft = async (
       data: {
         sale: draftSale as Sale,
         items: (insertedItems ?? []) as SaleItem[],
+        payments: [],
       },
     };
   } catch (error) {
@@ -790,11 +799,11 @@ export const getSales = async (
 
 export const getSaleById = async (
   id: string
-): Promise<ActionResponse<SaleWithItems>> => {
+): Promise<ActionResponse<SaleWithDetails>> => {
   try {
     const { data, error } = await supabase
       .from(TABLES.SALES)
-      .select(`*, ${TABLES.SALE_ITEMS}(*)`)
+      .select(`*, ${TABLES.SALE_ITEMS}(*), ${TABLES.SALE_PAYMENTS}(*)`)
       .eq('id', id)
       .single();
 
@@ -802,7 +811,7 @@ export const getSaleById = async (
       throw new Error(error?.message ?? 'Sale not found');
     }
 
-    return { success: true, data: data as SaleWithItems };
+    return { success: true, data: data as SaleWithDetails };
   } catch (error) {
     return {
       success: false,

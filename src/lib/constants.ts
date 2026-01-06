@@ -14,6 +14,7 @@ export const TABLES = {
   CUSTOMERS: 'customers',
   SALES: 'sales',
   SALE_ITEMS: 'sale_items',
+  SALE_PAYMENTS: 'sale_payments',
   STOCK_MOVEMENTS: 'stock_movements',
   SHIFT_SESSIONS: 'shift_sessions',
   SETTINGS: 'settings',
