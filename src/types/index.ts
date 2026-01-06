@@ -111,7 +111,13 @@ export type Customer = {
     phone: string;
     email?: string;
     address?: string;
+    address_street?: string;
+    address_city?: string;
+    address_state?: string;
+    address_zip?: string;
     loyalty_points: number;
+    store_credit?: number;
+    tier_id?: string;
     tax_id?: string; // For business customers
     is_active: boolean;
     created_at: string;
