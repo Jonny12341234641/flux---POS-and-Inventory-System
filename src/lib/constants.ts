@@ -20,6 +20,7 @@ export const TABLES = {
   RETURN_REQUESTS: 'return_requests',
   SHIFT_SESSIONS: 'shift_sessions',
   SETTINGS: 'settings',
+  PROMOTIONS: 'promotions',
 } as const;
 
 // Financial defaults and formatting fallbacks.

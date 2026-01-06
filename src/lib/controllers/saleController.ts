@@ -109,7 +109,6 @@ type CreateSaleBody = SaleInput & {
 };
 
 const MAX_DISCOUNT_PERCENT = 10;
-const PROMOTIONS_TABLE = 'promotions';
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
@@ -530,7 +529,7 @@ export const createSale = async (
 
     if (promoCode) {
       const { data: promotionData, error: promotionError } = await supabase
-        .from(PROMOTIONS_TABLE)
+        .from(TABLES.PROMOTIONS)
         .select('*')
         .eq('code', promoCode)
         .single();
