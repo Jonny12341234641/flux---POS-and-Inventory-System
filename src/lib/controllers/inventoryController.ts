@@ -274,7 +274,8 @@ export const deleteCategory = async (
 
 export const getProducts = async (
   query = '',
-  page = 1
+  page = 1,
+  filters?: { categoryId?: string; supplierId?: string; status?: string }
 ): Promise<ActionResponse<Product[]>> => {
   try {
     const trimmedQuery = query.trim();
@@ -284,8 +285,21 @@ export const getProducts = async (
 
     let request = supabase
       .from(TABLES.PRODUCTS)
-      .select('*')
-      .eq('is_active', true);
+      .select('*');
+
+    if (filters?.categoryId) {
+      request = request.eq('category_id', filters.categoryId);
+    }
+    if (filters?.supplierId) {
+      request = request.eq('supplier_id', filters.supplierId);
+    }
+    if (filters?.status === 'active') {
+      request = request.eq('is_active', true);
+    } else if (filters?.status === 'inactive') {
+      request = request.eq('is_active', false);
+    } else {
+      request = request.eq('is_active', true);
+    }
 
     if (trimmedQuery) {
       const search = `%${trimmedQuery}%`;

@@ -54,6 +54,8 @@ export type Product = {
     name: string;
     description?: string;
     category_id: string;
+    parent_id?: string | null;
+    supplier_id?: string | null;
     
     // Financials
     // Note: Store as decimals (e.g., 10.99) or cents (1099) consistently.
