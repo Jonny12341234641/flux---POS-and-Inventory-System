@@ -1,5 +1,12 @@
 import { supabase } from '../../lib/supabase';
-import type { Category, Product, StockMovement, ActionResponse } from '../../types';
+import type {
+  Category,
+  Product,
+  StockMovement,
+  ActionResponse,
+  PurchaseOrder,
+  StockMovementWithDetails,
+} from '../../types';
 import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
 
 // Removed local ControllerResult definition
@@ -14,6 +21,26 @@ type ProductInsert = Omit<
   is_active?: boolean;
 };
 type ProductUpdate = Partial<ProductInsert>;
+
+type RestockOrderItem = {
+  product_id: string;
+  product_name: string;
+  current_stock: number;
+  reorder_level: number;
+  order_quantity: number;
+  unit_cost: number;
+  total_cost: number;
+};
+
+type RestockOrderDraft = {
+  supplier_id: string;
+  status: PurchaseOrder['status'];
+  order_date: string;
+  total_amount: number;
+  items: RestockOrderItem[];
+};
+
+type ProductWithSupplier = Product & { supplier_id?: string | null };
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
@@ -48,6 +75,103 @@ const ensureBarcodeAvailable = async (
   if (data && data.length > 0) {
     throw new Error('Barcode already used');
   }
+};
+
+const normalizeAuditDetails = (
+  details: Record<string, unknown> | string | null
+): string | null => {
+  if (details === null || typeof details === 'undefined') {
+    return null;
+  }
+  if (typeof details === 'string') {
+    return details;
+  }
+  return JSON.stringify(details);
+};
+
+const logProductAudit = async (
+  userId: string,
+  details: string
+): Promise<void> => {
+  try {
+    const { error } = await supabase.from('audit_logs').insert({
+      user_id: userId,
+      action: 'PRODUCT_UPDATE',
+      details: normalizeAuditDetails(details),
+      ip_address: null,
+      created_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  } catch (error) {
+    console.error(
+      'Product audit log failed:',
+      getErrorMessage(error, 'Audit log error')
+    );
+  }
+};
+
+const buildProductAuditMessages = (
+  currentProduct: Product,
+  updates: ProductUpdate,
+  userId: string
+) => {
+  const messages: string[] = [];
+
+  if (
+    typeof updates.price !== 'undefined' &&
+    updates.price !== currentProduct.price
+  ) {
+    messages.push(
+      `Price changed from ${currentProduct.price} to ${updates.price} by User ${userId}`
+    );
+  }
+
+  if (
+    typeof updates.cost_price !== 'undefined' &&
+    updates.cost_price !== currentProduct.cost_price
+  ) {
+    messages.push(
+      `Cost price changed from ${currentProduct.cost_price} to ${updates.cost_price} by User ${userId}`
+    );
+  }
+
+  if (
+    typeof updates.name !== 'undefined' &&
+    updates.name !== currentProduct.name
+  ) {
+    messages.push(
+      `Name changed from ${currentProduct.name} to ${updates.name} by User ${userId}`
+    );
+  }
+
+  if (
+    typeof updates.stock_quantity !== 'undefined' &&
+    updates.stock_quantity !== currentProduct.stock_quantity
+  ) {
+    messages.push(
+      `Stock quantity changed from ${currentProduct.stock_quantity} to ${updates.stock_quantity} by User ${userId}`
+    );
+  }
+
+  return messages;
+};
+
+const getDuplicateBarcodes = (barcodes: string[]) => {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const barcode of barcodes) {
+    if (seen.has(barcode)) {
+      duplicates.add(barcode);
+    } else {
+      seen.add(barcode);
+    }
+  }
+
+  return Array.from(duplicates);
 };
 
 export const getCategories = async (): Promise<ActionResponse<Category[]>> => {
@@ -267,11 +391,34 @@ export const createProduct = async (
 
 export const updateProduct = async (
   id: string,
-  data: ProductUpdate
+  data: ProductUpdate,
+  userId?: string
 ): Promise<ActionResponse<Product>> => {
   try {
     if (data.barcode) {
       await ensureBarcodeAvailable(data.barcode, id);
+    }
+
+    const shouldAudit =
+      Boolean(userId) &&
+      (typeof data.price !== 'undefined' ||
+        typeof data.cost_price !== 'undefined' ||
+        typeof data.name !== 'undefined' ||
+        typeof data.stock_quantity !== 'undefined');
+
+    let currentProduct: Product | null = null;
+    if (shouldAudit) {
+      const { data: existingProduct, error: existingError } = await supabase
+        .from(TABLES.PRODUCTS)
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (existingError || !existingProduct) {
+        throw new Error(existingError?.message ?? 'Product not found');
+      }
+
+      currentProduct = existingProduct as Product;
     }
 
     const { data: product, error } = await supabase
@@ -283,6 +430,17 @@ export const updateProduct = async (
 
     if (error || !product) {
       throw new Error(error?.message ?? 'Failed to update product');
+    }
+
+    if (shouldAudit && currentProduct && userId) {
+      const messages = buildProductAuditMessages(
+        currentProduct,
+        data,
+        userId
+      );
+      if (messages.length > 0) {
+        await logProductAudit(userId, messages.join('; '));
+      }
     }
 
     return { success: true, data: product as Product };
@@ -321,10 +479,21 @@ export const deleteProduct = async (
 export const adjustStock = async (
   productId: string,
   quantityChange: number,
+  type: StockMovement['type'],
   reason: string,
-  userId: string
+  userId: string,
+  unitCost?: number
 ): Promise<ActionResponse<{ movement: StockMovement; product: Product }>> => {
   try {
+    if (type === 'purchase') {
+      if (typeof unitCost !== 'number' || !Number.isFinite(unitCost)) {
+        throw new Error('Unit cost is required for purchase adjustments');
+      }
+      if (quantityChange <= 0) {
+        throw new Error('Purchase quantity must be greater than zero');
+      }
+    }
+
     const { data: product, error: productError } = await supabase
       .from(TABLES.PRODUCTS)
       .select('*')
@@ -335,14 +504,11 @@ export const adjustStock = async (
       throw new Error(productError?.message ?? 'Product not found');
     }
 
-    const movementType: StockMovement['type'] =
-      quantityChange < 0 ? 'damage' : 'adjustment';
-
     const { data: movement, error: movementError } = await supabase
       .from(TABLES.STOCK_MOVEMENTS)
       .insert({
         product_id: productId,
-        type: movementType,
+        type,
         quantity_change: quantityChange,
         remarks: reason,
         created_by: userId,
@@ -354,10 +520,24 @@ export const adjustStock = async (
       throw new Error(movementError?.message ?? 'Failed to log stock movement');
     }
 
-    const newQuantity = product.stock_quantity + quantityChange;
+    const currentStock = product.stock_quantity ?? 0;
+    const newQuantity = currentStock + quantityChange;
+
+    const updatePayload: Partial<Product> = {
+      stock_quantity: newQuantity,
+    };
+
+    if (type === 'purchase' && typeof unitCost === 'number') {
+      const currentCost = product.cost_price ?? 0;
+      const newCost =
+        (currentStock * currentCost + quantityChange * unitCost) /
+        (currentStock + quantityChange);
+      updatePayload.cost_price = newCost;
+    }
+
     const { data: updatedProduct, error: updateError } = await supabase
       .from(TABLES.PRODUCTS)
-      .update({ stock_quantity: newQuantity })
+      .update(updatePayload)
       .eq('id', productId)
       .select('*')
       .single();
@@ -377,6 +557,169 @@ export const adjustStock = async (
     return {
       success: false,
       error: getErrorMessage(error, 'Failed to adjust stock'),
+    };
+  }
+};
+
+export const bulkImportProducts = async (
+  products: ProductInsert[]
+): Promise<ActionResponse<Product[]>> => {
+  try {
+    if (!products.length) {
+      return { success: true, data: [] };
+    }
+
+    const barcodes = products.map((product) => product.barcode).filter(Boolean);
+    if (barcodes.length !== products.length) {
+      throw new Error('All products must include a barcode');
+    }
+
+    const duplicateBarcodes = getDuplicateBarcodes(barcodes);
+    if (duplicateBarcodes.length > 0) {
+      throw new Error(
+        `Duplicate barcodes in import: ${duplicateBarcodes.join(', ')}`
+      );
+    }
+
+    const uniqueBarcodes = Array.from(new Set(barcodes));
+    const { data: existing, error: existingError } = await supabase
+      .from(TABLES.PRODUCTS)
+      .select('barcode')
+      .in('barcode', uniqueBarcodes);
+
+    if (existingError) {
+      throw new Error(existingError.message);
+    }
+
+    const existingBarcodes = new Set(
+      (existing ?? []).map((row) => row.barcode)
+    );
+
+    const payload = products.map((product) => ({
+      ...product,
+      stock_quantity: product.stock_quantity ?? 0,
+      is_active: product.is_active ?? true,
+    }));
+
+    const { data, error } = await supabase
+      .from(TABLES.PRODUCTS)
+      .upsert(payload, { onConflict: 'barcode' })
+      .select('*');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const insertedCount = uniqueBarcodes.length - existingBarcodes.size;
+    const updatedCount = existingBarcodes.size;
+
+    return {
+      success: true,
+      data: (data ?? []) as Product[],
+      message: `Imported ${insertedCount} new products, updated ${updatedCount} existing products.`,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Bulk import failed'),
+    };
+  }
+};
+
+export const getProductVariants = async (
+  parentId: string
+): Promise<ActionResponse<Product[]>> => {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.PRODUCTS)
+      .select('*')
+      .eq('parent_id', parentId)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { success: true, data: (data ?? []) as Product[] };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to fetch product variants'),
+    };
+  }
+};
+
+export const getProductStockHistory = async (
+  productId: string
+): Promise<ActionResponse<StockMovementWithDetails[]>> => {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.STOCK_MOVEMENTS)
+      .select(`*, creator:${TABLES.USERS}(full_name)`)
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { success: true, data: (data ?? []) as StockMovementWithDetails[] };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to fetch stock history'),
+    };
+  }
+};
+
+export const generateRestockOrder = async (
+  supplierId: string
+): Promise<ActionResponse<RestockOrderDraft>> => {
+  try {
+    const lowStockResult = await getLowStockProducts();
+
+    if (!lowStockResult.success || !lowStockResult.data) {
+      throw new Error(lowStockResult.error ?? 'Failed to fetch low stock items');
+    }
+
+    const items = (lowStockResult.data as ProductWithSupplier[])
+      .filter((product) => product.supplier_id === supplierId)
+      .map((product) => {
+        const orderQuantity = product.reorder_level - product.stock_quantity;
+        const unitCost = product.cost_price ?? 0;
+
+        return {
+          product_id: product.id,
+          product_name: product.name,
+          current_stock: product.stock_quantity,
+          reorder_level: product.reorder_level,
+          order_quantity: orderQuantity,
+          unit_cost: unitCost,
+          total_cost: orderQuantity * unitCost,
+        };
+      })
+      .filter((item) => item.order_quantity > 0);
+
+    const totalAmount = items.reduce(
+      (total, item) => total + item.total_cost,
+      0
+    );
+
+    return {
+      success: true,
+      data: {
+        supplier_id: supplierId,
+        status: 'pending',
+        order_date: new Date().toISOString(),
+        total_amount: totalAmount,
+        items,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to generate restock order'),
     };
   }
 };

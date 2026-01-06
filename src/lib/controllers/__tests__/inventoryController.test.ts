@@ -169,7 +169,13 @@ describe('Inventory Controller', () => {
             return {};
         });
 
-        const result = await adjustStock(productId, change, reason, userId);
+        const result = await adjustStock(
+            productId,
+            change,
+            'adjustment',
+            reason,
+            userId
+        );
 
         expect(result.success).toBe(true);
         expect(result.data?.product.stock_quantity).toBe(60);
@@ -177,4 +183,3 @@ describe('Inventory Controller', () => {
     });
   });
 });
-
