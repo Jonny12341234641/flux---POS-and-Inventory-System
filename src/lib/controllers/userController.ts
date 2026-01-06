@@ -1,6 +1,6 @@
-import { supabase } from '@/lib/supabase';
-import { ITEMS_PER_PAGE, TABLES } from '@/lib/constants';
-import type { ActionResponse, User, UserRow } from '@/types';
+import { supabase } from '../../lib/supabase';
+import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
+import type { ActionResponse, User, UserRow } from '../../types';
 
 const PROFILE_SELECT =
   'id, username, full_name, role, status, last_login, created_at, updated_at';

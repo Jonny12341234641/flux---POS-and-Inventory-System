@@ -1,6 +1,6 @@
-import { supabase } from '@/lib/supabase';
-import { TABLES } from '@/lib/constants';
-import type { ShiftSession, ActionResponse, Sale } from '@/types'; // Import ActionResponse
+import { supabase } from '../../lib/supabase';
+import { TABLES } from '../../lib/constants';
+import type { ShiftSession, ActionResponse, Sale } from '../../types'; // Import ActionResponse
 
 type CashSaleRow = Pick<Sale, 'id' | 'grand_total'>;
 
