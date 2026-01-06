@@ -17,7 +17,7 @@ type CustomerInsert = {
 };
 
 type CustomerUpdate = Partial<
-  Pick<Customer, 'name' | 'email' | 'address' | 'tax_id'>
+  Pick<Customer, 'name' | 'email' | 'address' | 'tax_id' | 'phone' | 'is_active'>
 >;
 
 type SupabaseErrorLike = {
@@ -47,12 +47,18 @@ const isDuplicatePhoneError = (error: unknown) => {
   return message.includes('duplicate') || message.includes('unique');
 };
 
-const ensurePhoneAvailable = async (phone: string) => {
-  const { data, error } = await supabase
+const ensurePhoneAvailable = async (phone: string, excludeId?: string) => {
+  let query = supabase
     .from(TABLES.CUSTOMERS)
     .select('id')
     .eq('phone', phone)
     .limit(1);
+
+  if (excludeId) {
+    query = query.neq('id', excludeId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -61,6 +67,10 @@ const ensurePhoneAvailable = async (phone: string) => {
   if (data && data.length > 0) {
     throw new Error('Customer with this phone already exists');
   }
+};
+
+const isValidEmail = (email: string) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
 export const searchCustomers = async (
@@ -127,6 +137,7 @@ export const createCustomer = async (
   try {
     const name = data.name?.trim();
     const phone = data.phone?.trim();
+    const email = data.email?.trim();
 
     if (!name) {
       throw new Error('Customer name is required');
@@ -136,12 +147,16 @@ export const createCustomer = async (
       throw new Error('Phone number is required');
     }
 
+    if (email && !isValidEmail(email)) {
+      throw new Error('Invalid email format');
+    }
+
     await ensurePhoneAvailable(phone);
 
     const payload = {
       name,
       phone,
-      email: data.email ?? null,
+      email: email ?? null,
       address: data.address ?? null,
       tax_id: data.tax_id ?? null,
       loyalty_points: 0,
@@ -198,12 +213,24 @@ export const updateCustomer = async (
   data: CustomerUpdate
 ): Promise<ControllerResult<Customer>> => {
   try {
-    const hasUpdates = Object.values(data).some(
-      (value) => typeof value !== 'undefined'
-    );
+    const hasUpdates = Object.values(data).some((value) => value !== undefined);
+    if (!hasUpdates) throw new Error('No updates provided');
 
-    if (!hasUpdates) {
-      throw new Error('No customer updates provided');
+    if (data.phone) {
+      const trimmedPhone = data.phone.trim();
+      if (!trimmedPhone) throw new Error('Phone cannot be empty');
+      await ensurePhoneAvailable(trimmedPhone, id);
+      data.phone = trimmedPhone;
+    }
+
+    if (data.name) data.name = data.name.trim();
+
+    if (data.email) {
+      const trimmedEmail = data.email.trim();
+      if (!isValidEmail(trimmedEmail)) {
+        throw new Error('Invalid email format');
+      }
+      data.email = trimmedEmail;
     }
 
     const { data: customer, error } = await supabase
@@ -214,6 +241,7 @@ export const updateCustomer = async (
       .single();
 
     if (error || !customer) {
+      if (isDuplicatePhoneError(error)) throw new Error('Phone already in use');
       throw new Error(error?.message ?? 'Failed to update customer');
     }
 
@@ -320,5 +348,105 @@ export const updateLoyaltyPoints = async (
       success: false,
       error: getErrorMessage(error, 'Failed to update loyalty points'),
     };
+  }
+};
+
+export const anonymizeCustomer = async (
+  id: string
+): Promise<ControllerResult<Customer>> => {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.CUSTOMERS)
+      .update({
+        name: `Deleted User ${id.slice(0, 8)}`,
+        phone: `000000_${id.slice(0, 6)}`,
+        email: null,
+        address: null,
+        tax_id: null,
+        is_active: false,
+        loyalty_points: 0,
+      })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { success: true, data: data as Customer };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to anonymize'),
+    };
+  }
+};
+
+export const adjustLoyaltyPointsSafe = async (
+  customerId: string,
+  amount: number
+): Promise<ControllerResult<Customer>> => {
+  try {
+    const { data, error } = await supabase.rpc('increment_loyalty_points', {
+      row_id: customerId,
+      amount,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { success: true, data: data as Customer };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Loyalty update failed'),
+    };
+  }
+};
+
+export const bulkCreateCustomers = async (
+  customers: CustomerInsert[]
+): Promise<ControllerResult<Customer[]>> => {
+  try {
+    if (!customers.length) {
+      return { success: true, data: [] };
+    }
+
+    const { data, error } = await supabase
+      .from(TABLES.CUSTOMERS)
+      .insert(customers)
+      .select();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { success: true, data: (data ?? []) as Customer[] };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Bulk import failed'),
+    };
+  }
+};
+
+export const getAllCustomersForExport = async (): Promise<
+  ControllerResult<Customer[]>
+> => {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.CUSTOMERS)
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { success: true, data: (data ?? []) as Customer[] };
+  } catch (error) {
+    return { success: false, error: getErrorMessage(error, 'Export failed') };
   }
 };
