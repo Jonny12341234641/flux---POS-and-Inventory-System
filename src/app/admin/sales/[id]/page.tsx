@@ -11,8 +11,8 @@ import {
   CardTitle,
   CardContent,
   CardFooter,
-} from "@/components/ui/card";
-import { APP_NAME } from "@/lib/constants";
+} from "../../../../components/ui/card";
+import { APP_NAME } from "../../../../lib/constants";
 
 interface SaleItem {
   id: string;
@@ -36,7 +36,7 @@ interface Sale {
 }
 
 type ParamsShape = { id?: string | string[] };
-type ReactUse = <T,>(value: T) => T;
+type ReactUse = <T>(value: Promise<T>) => T;
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -94,7 +94,7 @@ const extractSale = (data: unknown): Sale | null => {
     (record.data as Sale) ||
     (record.sale as Sale) ||
     (record.receipt as Sale) ||
-    (record as Sale);
+    (record as unknown as Sale);
 
   if (!candidate || typeof candidate !== "object" || !candidate.id) {
     return null;
