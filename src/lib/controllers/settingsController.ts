@@ -43,7 +43,7 @@ const logSettingsChange = async (
   details: string
 ) => {
   try {
-    await supabase.from('audit_logs').insert({
+    await supabase.from(TABLES.AUDIT_LOGS).insert({
       user_id: userId,
       action: `SETTINGS_${action}`,
       details,
