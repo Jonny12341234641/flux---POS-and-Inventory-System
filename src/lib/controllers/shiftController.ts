@@ -43,8 +43,6 @@ type ShiftStatus = {
   expected_drawer_balance: number;
 };
 
-const CASH_TRANSACTIONS_TABLE = 'cash_transactions';
-
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -153,7 +151,7 @@ const calculateCashTransactions = async (
   endTime?: string
 ): Promise<CashTransactionTotals> => {
   let query = supabase
-    .from(CASH_TRANSACTIONS_TABLE)
+    .from(TABLES.CASH_TRANSACTIONS)
     .select('id, amount, type, created_at')
     .eq('shift_id', shiftId);
 
@@ -419,7 +417,7 @@ export const addCashTransaction = async (
     }
 
     const { data: transaction, error: transactionError } = await supabase
-      .from(CASH_TRANSACTIONS_TABLE)
+      .from(TABLES.CASH_TRANSACTIONS)
       .insert({
         shift_id: shiftId,
         amount: safeAmount,

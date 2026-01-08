@@ -22,6 +22,7 @@ export const TABLES = {
   SETTINGS: 'settings',
   PROMOTIONS: 'promotions',
   AUDIT_LOGS: 'audit_logs',
+  CASH_TRANSACTIONS: 'cash_transactions',
 } as const;
 
 // Financial defaults and formatting fallbacks.
