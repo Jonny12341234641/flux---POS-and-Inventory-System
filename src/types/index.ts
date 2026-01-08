@@ -43,6 +43,11 @@ export type Supplier = {
     email?: string;
     address?: string;
     tax_id?: string;
+    payment_terms?: string;
+    lead_time_days?: number;
+    moq?: number;
+    website?: string;
+    notes?: string;
     is_active: boolean;
     created_at: string;
     updated_at: string;

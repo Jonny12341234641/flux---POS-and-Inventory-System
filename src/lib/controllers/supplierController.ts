@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { TABLES } from '../../lib/constants';
-import type { Supplier } from '../../types';
+import type { Supplier, PaginatedResponse } from '../../types';
 
 type ControllerResult<T> = {
   success: boolean;
@@ -15,10 +15,28 @@ type SupplierInsert = {
   email?: string;
   address?: string;
   tax_id?: string;
+  payment_terms?: string;
+  lead_time_days?: number;
+  moq?: number;
+  website?: string;
+  notes?: string;
 };
 
 type SupplierUpdate = Partial<
-  Pick<Supplier, 'name' | 'contact_person' | 'phone' | 'email' | 'address' | 'tax_id'>
+  Pick<
+    Supplier,
+    | 'name'
+    | 'contact_person'
+    | 'phone'
+    | 'email'
+    | 'address'
+    | 'tax_id'
+    | 'payment_terms'
+    | 'lead_time_days'
+    | 'moq'
+    | 'website'
+    | 'notes'
+  >
 >;
 
 type SupabaseErrorLike = {
@@ -74,23 +92,71 @@ const ensureNameAvailable = async (
   }
 };
 
+const logAudit = (action: string, details: string, userId: string) => {
+  supabase
+    .from(TABLES.AUDIT_LOGS)
+    .insert({
+      user_id: userId,
+      action,
+      details,
+      created_at: new Date().toISOString(),
+    })
+    .then(({ error }) => {
+      if (error) {
+        console.error('Audit Log Failed:', error);
+      }
+    });
+};
+
 export const getSuppliers = async (
-  onlyActive?: boolean
-): Promise<ControllerResult<Supplier[]>> => {
+  page = 1,
+  limit = 10,
+  searchQuery?: string,
+  onlyActive = true
+): Promise<ControllerResult<PaginatedResponse<Supplier>>> => {
   try {
-    let query = supabase.from(TABLES.SUPPLIERS).select('*');
+    const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+    const safeLimit =
+      Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 10;
+    const offset = (safePage - 1) * safeLimit;
+
+    let query = supabase
+      .from(TABLES.SUPPLIERS)
+      .select('*', { count: 'exact' });
 
     if (onlyActive) {
       query = query.eq('is_active', true);
     }
 
-    const { data, error } = await query.order('name');
+    const trimmedQuery = searchQuery?.trim();
+    if (trimmedQuery) {
+      const term = `%${trimmedQuery}%`;
+      query = query.or(
+        `name.ilike.${term},contact_person.ilike.${term},email.ilike.${term}`
+      );
+    }
+
+    const { data, error, count } = await query
+      .order('name')
+      .range(offset, offset + safeLimit - 1);
 
     if (error) {
       throw new Error(error.message);
     }
 
-    return { success: true, data: (data ?? []) as Supplier[] };
+    return {
+      success: true,
+      data: {
+        success: true,
+        data: (data ?? []) as Supplier[],
+        metadata: {
+          current_page: safePage,
+          total_pages: Math.ceil((count ?? 0) / safeLimit),
+          total_items: count ?? 0,
+          items_per_page: safeLimit,
+        },
+      },
+    };
   } catch (error) {
     return {
       success: false,
@@ -123,13 +189,18 @@ export const getSupplierById = async (
 };
 
 export const createSupplier = async (
-  data: SupplierInsert
+  data: SupplierInsert,
+  userId: string
 ): Promise<ControllerResult<Supplier>> => {
   try {
     const name = data.name?.trim();
 
     if (!name) {
       throw new Error('Supplier name is required');
+    }
+
+    if (!userId) {
+      throw new Error('User ID is required');
     }
 
     await ensureNameAvailable(name);
@@ -141,6 +212,12 @@ export const createSupplier = async (
       email: normalizeOptionalString(data.email),
       address: normalizeOptionalString(data.address),
       tax_id: normalizeOptionalString(data.tax_id),
+      payment_terms: normalizeOptionalString(data.payment_terms),
+      lead_time_days:
+        typeof data.lead_time_days === 'number' ? data.lead_time_days : null,
+      moq: typeof data.moq === 'number' ? data.moq : null,
+      website: normalizeOptionalString(data.website),
+      notes: normalizeOptionalString(data.notes),
       is_active: true,
     };
 
@@ -157,6 +234,7 @@ export const createSupplier = async (
       throw new Error(error?.message ?? 'Failed to create supplier');
     }
 
+    logAudit('SUPPLIER_CREATE', `Created supplier: ${supplier.name}`, userId);
     return { success: true, data: supplier as Supplier };
   } catch (error) {
     return {
@@ -168,9 +246,14 @@ export const createSupplier = async (
 
 export const updateSupplier = async (
   id: string,
-  data: SupplierUpdate
+  data: SupplierUpdate,
+  userId: string
 ): Promise<ControllerResult<Supplier>> => {
   try {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
     const hasUpdates = Object.values(data).some(
       (value) => typeof value !== 'undefined'
     );
@@ -206,6 +289,7 @@ export const updateSupplier = async (
       throw new Error(error?.message ?? 'Failed to update supplier');
     }
 
+    logAudit('SUPPLIER_UPDATE', `Updated supplier: ${supplier.name}`, userId);
     return { success: true, data: supplier as Supplier };
   } catch (error) {
     return {
@@ -216,9 +300,30 @@ export const updateSupplier = async (
 };
 
 export const deleteSupplier = async (
-  id: string
+  id: string,
+  userId: string
 ): Promise<ControllerResult<Supplier>> => {
   try {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    const { count, error: checkError } = await supabase
+      .from(TABLES.PURCHASE_ORDERS)
+      .select('id', { count: 'exact', head: true })
+      .eq('supplier_id', id)
+      .in('status', ['pending', 'partially_received']);
+
+    if (checkError) {
+      throw new Error(checkError.message);
+    }
+
+    if (count && count > 0) {
+      throw new Error(
+        `Cannot delete: This supplier has ${count} active Purchase Orders.`
+      );
+    }
+
     const { data: supplier, error } = await supabase
       .from(TABLES.SUPPLIERS)
       .update({ is_active: false })
@@ -230,11 +335,47 @@ export const deleteSupplier = async (
       throw new Error(error?.message ?? 'Failed to delete supplier');
     }
 
+    logAudit('SUPPLIER_DELETE', `Soft deleted supplier: ${supplier.name}`, userId);
     return { success: true, data: supplier as Supplier };
   } catch (error) {
     return {
       success: false,
       error: getErrorMessage(error, 'Failed to delete supplier'),
+    };
+  }
+};
+
+export const reactivateSupplier = async (
+  id: string,
+  userId: string
+): Promise<ControllerResult<Supplier>> => {
+  try {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    const { data: supplier, error } = await supabase
+      .from(TABLES.SUPPLIERS)
+      .update({ is_active: true })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error || !supplier) {
+      throw new Error(error?.message ?? 'Failed to reactivate');
+    }
+
+    logAudit(
+      'SUPPLIER_REACTIVATE',
+      `Reactivated supplier: ${supplier.name}`,
+      userId
+    );
+
+    return { success: true, data: supplier as Supplier };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to reactivate supplier'),
     };
   }
 };
