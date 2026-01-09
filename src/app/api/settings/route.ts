@@ -91,13 +91,7 @@ const SettingsSchema = z
       .optional(),
     logo_url: z.preprocess(trimString, z.string().optional()),
   })
-  .strict()
-  .refine(
-    (data) =>
-      typeof data.default_tax_rate !== "undefined" ||
-      typeof data.tax_rate !== "undefined",
-    { message: "Tax rate is required", path: ["default_tax_rate"] }
-  );
+  .strict();
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message.trim()) {

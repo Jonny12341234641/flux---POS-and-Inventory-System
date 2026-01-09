@@ -63,9 +63,32 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!Array.isArray(items) || items.length === 0) {
+    const normalizedItems = Array.isArray(items)
+      ? items.map((item: any) => ({
+          product_id: item.product_id ?? item.productId,
+          quantity: Number(item.quantity),
+          unit_cost: Number(item.unit_cost ?? item.unitCost),
+          expiry_date: item.expiry_date ?? item.expiryDate,
+        }))
+      : [];
+
+    if (normalizedItems.length === 0) {
       return NextResponse.json(
         { success: false, error: "At least one item is required" },
+        { status: 400 }
+      );
+    }
+
+    const hasInvalidItems = normalizedItems.some(
+      (item) =>
+        !item.product_id ||
+        !Number.isFinite(item.quantity) ||
+        !Number.isFinite(item.unit_cost)
+    );
+
+    if (hasInvalidItems) {
+      return NextResponse.json(
+        { success: false, error: "Invalid items payload" },
         { status: 400 }
       );
     }
@@ -78,7 +101,7 @@ export async function POST(req: Request) {
       created_by: user.id,
     };
 
-    const result = await createPurchaseOrder(orderData, items);
+    const result = await createPurchaseOrder(orderData, normalizedItems);
 
     if (!result.success || !result.data) {
       throw new Error(result.error ?? "Failed to create purchase order");

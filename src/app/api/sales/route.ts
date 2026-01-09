@@ -14,7 +14,7 @@ type SaleItemPayload = {
 };
 
 type SalePayload = {
-  payment_method: 'cash' | 'card' | 'bank_transfer' | 'split';
+  payment_method: 'cash' | 'card' | 'bank_transfer' | 'split' | 'loyalty';
   amount_paid: number;
   discount_total?: number;
   customer_id?: string | null;
@@ -46,7 +46,8 @@ const isPaymentMethod = (
   value === 'cash' ||
   value === 'card' ||
   value === 'bank_transfer' ||
-  value === 'split';
+  value === 'split' ||
+  value === 'loyalty';
 
 const isNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
