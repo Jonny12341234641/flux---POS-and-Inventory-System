@@ -52,7 +52,19 @@ export async function GET(req: NextRequest) {
 
     if (searchParams.has("query")) {
       const query = searchParams.get("query") ?? "";
-      const result = await searchCustomers(query);
+      const limitParam = searchParams.get("limit");
+      const minLoyaltyPointsParam = searchParams.get("min_loyalty_points");
+      const createdAfterDate =
+        searchParams.get("created_after_date") ?? undefined;
+      const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
+      const min_loyalty_points = minLoyaltyPointsParam
+        ? Number.parseInt(minLoyaltyPointsParam, 10)
+        : undefined;
+      const result = await searchCustomers(query, {
+        limit,
+        min_loyalty_points,
+        created_after_date: createdAfterDate,
+      });
 
       if (!result.success) {
         throw new Error(result.error ?? "Failed to search customers");
@@ -86,7 +98,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, phone, email, address, tax_id } = body ?? {};
+    const {
+      name,
+      phone,
+      email,
+      address,
+      tax_id,
+      address_street,
+      address_city,
+      address_state,
+      address_zip,
+      store_credit,
+      tier_id,
+    } = body ?? {};
 
     if (!isPresent(name) || !isPresent(phone)) {
       return NextResponse.json(
@@ -95,7 +119,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const payload = { name, phone, email, address, tax_id };
+    const payload = {
+      name,
+      phone,
+      email,
+      address,
+      tax_id,
+      address_street,
+      address_city,
+      address_state,
+      address_zip,
+      store_credit,
+      tier_id,
+    };
     const result = await createCustomer(payload);
 
     if (!result.success || !result.data) {

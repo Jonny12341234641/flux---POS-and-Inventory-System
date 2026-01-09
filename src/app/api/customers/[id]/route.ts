@@ -11,6 +11,13 @@ type CustomerUpdatePayload = {
   email?: string;
   address?: string;
   tax_id?: string;
+  address_street?: string;
+  address_city?: string;
+  address_state?: string;
+  address_zip?: string;
+  store_credit?: number;
+  tier_id?: string;
+  is_active?: boolean;
 };
 
 const isDuplicatePhoneError = (message: string): boolean => {
@@ -86,7 +93,20 @@ export async function PUT(
   try {
     const { id } = params;
     const body = (await req.json()) as CustomerUpdatePayload;
-    const { name, phone, email, address, tax_id } = body ?? {};
+    const {
+      name,
+      phone,
+      email,
+      address,
+      tax_id,
+      address_street,
+      address_city,
+      address_state,
+      address_zip,
+      store_credit,
+      tier_id,
+      is_active,
+    } = body ?? {};
 
     const result = await updateCustomer(id, {
       name,
@@ -94,6 +114,13 @@ export async function PUT(
       email,
       address,
       tax_id,
+      address_street,
+      address_city,
+      address_state,
+      address_zip,
+      store_credit,
+      tier_id,
+      is_active,
     });
 
     if (!result.success || !result.data) {
