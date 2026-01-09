@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "../../../utils/supabase/server";
 import {
   createCustomer,
   getCustomers,
@@ -97,6 +98,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const body = await req.json();
     const {
       name,
@@ -132,7 +138,7 @@ export async function POST(req: NextRequest) {
       store_credit,
       tier_id,
     };
-    const result = await createCustomer(payload);
+    const result = await createCustomer(payload, user?.id);
 
     if (!result.success || !result.data) {
       const message = result.error ?? "Failed to create customer";

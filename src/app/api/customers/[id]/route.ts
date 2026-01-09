@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "../../../../utils/supabase/server";
 import {
   deleteCustomer,
   getCustomerById,
@@ -91,6 +92,11 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const { id } = params;
     const body = (await req.json()) as CustomerUpdatePayload;
     const {
@@ -108,20 +114,24 @@ export async function PUT(
       is_active,
     } = body ?? {};
 
-    const result = await updateCustomer(id, {
-      name,
-      phone,
-      email,
-      address,
-      tax_id,
-      address_street,
-      address_city,
-      address_state,
-      address_zip,
-      store_credit,
-      tier_id,
-      is_active,
-    });
+    const result = await updateCustomer(
+      id,
+      {
+        name,
+        phone,
+        email,
+        address,
+        tax_id,
+        address_street,
+        address_city,
+        address_state,
+        address_zip,
+        store_credit,
+        tier_id,
+        is_active,
+      },
+      user?.id
+    );
 
     if (!result.success || !result.data) {
       const message = result.error ?? "Failed to update customer";
