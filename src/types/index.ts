@@ -13,6 +13,7 @@ export type UserRow = {
     full_name: string;
     role: 'admin' | 'cashier';
     status: 'active' | 'inactive';
+    permissions?: Record<string, unknown>;
     last_login?: string;
     created_at: string;
     updated_at?: string;
