@@ -1,4 +1,4 @@
-import { supabase } from "../../lib/supabase";
+import { SupabaseClient } from "@supabase/supabase-js";
 import type { ShiftSession, User, UserRow } from "../../types"; // Import UserRow
 
 // explicit fields to select (excluding password_hash)
@@ -47,7 +47,10 @@ const buildAuthenticatedUser = (
   active_shift_id: activeShiftId ?? null
 });
 
-const fetchUserProfile = async (userId: string): Promise<UserProfileRow> => {
+const fetchUserProfile = async (
+  supabase: SupabaseClient,
+  userId: string
+): Promise<UserProfileRow> => {
   const { data, error } = await supabase
     .from("users")
     .select(PROFILE_SELECT)
@@ -61,7 +64,10 @@ const fetchUserProfile = async (userId: string): Promise<UserProfileRow> => {
   return data as UserProfileRow;
 };
 
-const fetchActiveShiftId = async (userId: string): Promise<string | null> => {
+const fetchActiveShiftId = async (
+  supabase: SupabaseClient,
+  userId: string
+): Promise<string | null> => {
   const { data, error } = await supabase
     .from("shift_sessions")
     .select(SHIFT_SELECT)
@@ -91,6 +97,7 @@ const normalizeAuditDetails = (details: AuthAuditDetails): string | null => {
 };
 
 const logAuthEvent = async (
+  supabase: SupabaseClient,
   userId: string,
   action: AuthAuditAction,
   details: AuthAuditDetails
@@ -113,6 +120,7 @@ const logAuthEvent = async (
 };
 
 export const loginUser = async (
+  supabase: SupabaseClient,
   email: string,
   password: string
 ): Promise<AuthenticatedUser> => {
@@ -128,14 +136,14 @@ export const loginUser = async (
 
     const session = data.session;
     const userId = session.user.id;
-    const profile = await fetchUserProfile(userId);
+    const profile = await fetchUserProfile(supabase, userId);
 
     if (profile.status === "inactive") {
       await supabase.auth.signOut();
       throw new Error("Account is disabled");
     }
 
-    const activeShiftId = await fetchActiveShiftId(userId);
+    const activeShiftId = await fetchActiveShiftId(supabase, userId);
     const loginTimestamp = new Date();
     // Update last_login
     const { error: updateError } = await supabase
@@ -147,7 +155,7 @@ export const loginUser = async (
       console.error("Failed to update last_login:", updateError.message);
     }
 
-    await logAuthEvent(userId, "LOGIN", {
+    await logAuthEvent(supabase, userId, "LOGIN", {
       method: "password",
       active_shift_id: activeShiftId,
     });
@@ -163,7 +171,9 @@ export const loginUser = async (
   }
 };
 
-export const logoutUser = async (): Promise<{ success: true }> => {
+export const logoutUser = async (
+  supabase: SupabaseClient
+): Promise<{ success: true }> => {
   try {
     const { data: sessionData, error: sessionError } =
       await supabase.auth.getSession();
@@ -174,7 +184,7 @@ export const logoutUser = async (): Promise<{ success: true }> => {
 
     const userId = sessionData?.session?.user?.id;
     if (userId) {
-      await logAuthEvent(userId, "LOGOUT", { reason: "user_request" });
+      await logAuthEvent(supabase, userId, "LOGOUT", { reason: "user_request" });
     }
 
     const { error } = await supabase.auth.signOut();
@@ -187,7 +197,9 @@ export const logoutUser = async (): Promise<{ success: true }> => {
   }
 };
 
-export const getCurrentUser = async (): Promise<AuthenticatedUser | null> => {
+export const getCurrentUser = async (
+  supabase: SupabaseClient
+): Promise<AuthenticatedUser | null> => {
   try {
     const { data, error } = await supabase.auth.getSession();
     if (error) {
@@ -200,13 +212,13 @@ export const getCurrentUser = async (): Promise<AuthenticatedUser | null> => {
       return null;
     }
 
-    const profile = await fetchUserProfile(session.user.id);
+    const profile = await fetchUserProfile(supabase, session.user.id);
     if (profile.status === "inactive") {
       await supabase.auth.signOut();
       return null;
     }
 
-    const activeShiftId = await fetchActiveShiftId(profile.id);
+    const activeShiftId = await fetchActiveShiftId(supabase, profile.id);
 
     return buildAuthenticatedUser(
       profile,
@@ -221,6 +233,7 @@ export const getCurrentUser = async (): Promise<AuthenticatedUser | null> => {
 };
 
 export const changePassword = async (
+  supabase: SupabaseClient,
   newPassword: string
 ): Promise<{ success: true }> => {
   try {
@@ -239,7 +252,7 @@ export const changePassword = async (
 
     const userId = data.user?.id;
     if (userId) {
-      await logAuthEvent(userId, "PASSWORD_CHANGE", {
+      await logAuthEvent(supabase, userId, "PASSWORD_CHANGE", {
         method: "self_service",
       });
     }
@@ -251,6 +264,7 @@ export const changePassword = async (
 };
 
 export const requestPasswordReset = async (
+  supabase: SupabaseClient,
   email: string
 ): Promise<{ success: true }> => {
   try {
@@ -278,7 +292,10 @@ export const requestPasswordReset = async (
   }
 };
 
-export const checkUserRole = async (userId: string): Promise<User["role"]> => {
+export const checkUserRole = async (
+  supabase: SupabaseClient,
+  userId: string
+): Promise<User["role"]> => {
   try {
     const { data, error } = await supabase
       .from("users")

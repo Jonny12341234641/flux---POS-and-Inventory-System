@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { loginUser } from "../../../../lib/controllers/authController";
+import { createClient } from "../../../../utils/supabase/server";
 
 const isAuthError = (message: string): boolean => {
   const normalized = message.toLowerCase();
@@ -15,6 +16,7 @@ const isAuthError = (message: string): boolean => {
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
     const body = await req.json();
     const { email, password } = body ?? {};
 
@@ -25,7 +27,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await loginUser(email, password);
+    const result = await loginUser(supabase, email, password);
 
     return NextResponse.json(
       { success: true, user: result },

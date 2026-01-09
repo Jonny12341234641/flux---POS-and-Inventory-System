@@ -2,10 +2,12 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "../../../../lib/controllers/authController";
+import { createClient } from "../../../../utils/supabase/server";
 
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const supabase = await createClient();
+    const user = await getCurrentUser(supabase);
 
     if (!user) {
       return NextResponse.json(
