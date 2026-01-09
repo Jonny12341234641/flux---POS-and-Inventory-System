@@ -6,12 +6,19 @@ import type { ActionResponse, User, UserRow } from '../../types';
 const PROFILE_SELECT =
   'id, username, full_name, role, status, last_login, created_at, updated_at';
 
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+type UserPermissions = Record<string, unknown>;
+
 type UserInsert = Pick<UserRow, 'username' | 'full_name' | 'role' | 'status'> & {
   email: string;
   password: string;
+  permissions?: UserPermissions;
 };
 
-type UserUpdate = Partial<Pick<UserRow, 'full_name' | 'role' | 'status'>>;
+type UserUpdate = Partial<Pick<UserRow, 'full_name' | 'role' | 'status'>> & {
+  permissions?: UserPermissions;
+};
 
 type SupabaseErrorLike = {
   code?: string | null;
@@ -53,6 +60,45 @@ const ensureUsernameAvailable = async (username: string) => {
 
   if (data && data.length > 0) {
     throw new Error('Username is already taken');
+  }
+};
+
+const normalizeAuditDetails = (
+  details: Record<string, unknown> | string | null
+): string | null => {
+  if (details === null || typeof details === 'undefined') {
+    return null;
+  }
+
+  if (typeof details === 'string') {
+    return details;
+  }
+
+  return JSON.stringify(details);
+};
+
+const logUserAction = async (
+  actorId: string,
+  action: string,
+  details?: Record<string, unknown> | string | null
+): Promise<void> => {
+  try {
+    const { error } = await supabase.from(TABLES.AUDIT_LOGS).insert({
+      user_id: actorId,
+      action,
+      details: normalizeAuditDetails(details ?? null),
+      ip_address: null,
+      created_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  } catch (error) {
+    console.error(
+      'User audit log failed:',
+      getErrorMessage(error, 'Audit log error')
+    );
   }
 };
 
@@ -111,20 +157,27 @@ export const getUserById = async (
 };
 
 export const createUser = async (
-  data: UserInsert
+  data: UserInsert,
+  actorId: string
 ): Promise<ActionResponse<User>> => {
   try {
     const username = data.username?.trim();
     const fullName = data.full_name?.trim();
     const email = data.email?.trim();
     const password = data.password;
+    const trimmedActorId = actorId?.trim();
 
     // --- Validation ---
     if (!username) throw new Error('Username is required');
     if (!fullName) throw new Error('Full name is required');
     if (!email) throw new Error('Email is required');
-    if (!password || password.length < 6) throw new Error('Password must be at least 6 characters');
+    if (!password || !PASSWORD_REGEX.test(password)) {
+      throw new Error(
+        'Password must be at least 8 characters and include uppercase, lowercase, and a number'
+      );
+    }
     if (!data.role) throw new Error('User role is required');
+    if (!trimmedActorId) throw new Error('Actor ID is required');
 
     // 1. Ensure username is unique in our DB before trying Auth
     await ensureUsernameAvailable(username);
@@ -149,6 +202,7 @@ export const createUser = async (
       full_name: fullName,
       role: data.role,
       status: data.status,
+      permissions: data.permissions,
       // created_at will be auto-set by DB
     };
 
@@ -160,13 +214,34 @@ export const createUser = async (
 
     // Rollback: If DB insert fails, delete the Auth user to prevent "orphans"
     if (dbError || !newUser) {
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+      try {
+        const { error: rollbackError } =
+          await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+
+        if (rollbackError) {
+          throw new Error(rollbackError.message);
+        }
+      } catch (rollbackError) {
+        console.error(
+          'CRITICAL: Failed to rollback auth user after user insert failure:',
+          {
+            userId: authUser.user.id,
+            error: getErrorMessage(rollbackError, 'Rollback failed'),
+          }
+        );
+      }
       
       if (isDuplicateUsernameError(dbError)) {
         throw new Error('Username is already taken');
       }
       throw new Error(dbError?.message ?? 'Failed to create user profile');
     }
+
+    await logUserAction(trimmedActorId, 'USER_CREATE', {
+      target_user_id: authUser.user.id,
+      role: data.role,
+      status: data.status,
+    });
 
     return { success: true, data: newUser as User };
 
@@ -180,11 +255,16 @@ export const createUser = async (
 
 export const updateUser = async (
   id: string,
-  data: UserUpdate
+  data: UserUpdate,
+  actorId: string
 ): Promise<ActionResponse<User>> => {
   try {
     if (!id) {
       throw new Error('User ID is required');
+    }
+    const trimmedActorId = actorId?.trim();
+    if (!trimmedActorId) {
+      throw new Error('Actor ID is required');
     }
 
     const hasUpdates = Object.values(data).some(
@@ -216,6 +296,22 @@ export const updateUser = async (
       throw new Error(error?.message ?? 'Failed to update user');
     }
 
+    await logUserAction(trimmedActorId, 'USER_UPDATE', {
+      target_user_id: id,
+      updates: payload,
+    });
+
+    if (payload.status === 'inactive') {
+      const { error: signOutError } =
+        await supabaseAdmin.auth.admin.signOut(id);
+
+      if (signOutError) {
+        throw new Error(
+          signOutError.message ?? 'Failed to revoke user sessions'
+        );
+      }
+    }
+
     return { success: true, data: user as User };
   } catch (error) {
     return {
@@ -226,11 +322,16 @@ export const updateUser = async (
 };
 
 export const deleteUser = async (
-  id: string
+  id: string,
+  actorId: string
 ): Promise<ActionResponse<User>> => {
   try {
     if (!id) {
       throw new Error('User ID is required');
+    }
+    const trimmedActorId = actorId?.trim();
+    if (!trimmedActorId) {
+      throw new Error('Actor ID is required');
     }
 
     const { data, error } = await supabase
@@ -242,6 +343,19 @@ export const deleteUser = async (
 
     if (error || !data) {
       throw new Error(error?.message ?? 'Failed to deactivate user');
+    }
+
+    await logUserAction(trimmedActorId, 'USER_DEACTIVATE', {
+      target_user_id: id,
+      status: 'inactive',
+    });
+
+    const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(id);
+
+    if (signOutError) {
+      throw new Error(
+        signOutError.message ?? 'Failed to revoke user sessions'
+      );
     }
 
     return { success: true, data: data as User };
