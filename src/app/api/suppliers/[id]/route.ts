@@ -4,6 +4,7 @@ import {
   getSupplierById,
   updateSupplier,
 } from "../../../../lib/controllers/supplierController";
+import { createClient } from "../../../../utils/supabase/server";
 
 type SupplierUpdatePayload = {
   name?: string;
@@ -12,53 +13,36 @@ type SupplierUpdatePayload = {
   contact_person?: string;
   address?: string;
   tax_id?: string;
+  payment_terms?: string;
+  lead_time_days?: number;
+  moq?: number;
+  website?: string;
+  notes?: string;
 };
 
-const isDuplicateNameError = (error: unknown): boolean => {
-  if (!error) {
-    return false;
+const parseOptionalNumber = (value: unknown): number | undefined => {
+  if (value === null || typeof value === "undefined") {
+    return undefined;
   }
 
-  if (typeof error === "string") {
-    const normalized = error.toLowerCase();
-    return (
-      normalized.includes("supplier with this name already exists") ||
-      ((normalized.includes("duplicate") || normalized.includes("unique")) &&
-        normalized.includes("name"))
-    );
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
   }
 
-  if (error instanceof Error) {
-    return isDuplicateNameError(error.message);
-  }
-
-  if (typeof error === "object") {
-    if (
-      "code" in error &&
-      (error as { code?: string }).code === "P2002" &&
-      "meta" in error &&
-      (error as { meta?: { target?: string[] } }).meta?.target?.includes("name")
-    ) {
-      return true;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return undefined;
     }
-
-    if (
-      "message" in error &&
-      typeof (error as { message?: string }).message === "string"
-    ) {
-      return isDuplicateNameError((error as { message?: string }).message);
-    }
-
-    if (
-      "details" in error &&
-      typeof (error as { details?: string }).details === "string"
-    ) {
-      return isDuplicateNameError((error as { details?: string }).details);
-    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : undefined;
   }
 
-  return false;
+  return undefined;
 };
+
+const isDuplicateNameError = (message?: string): boolean =>
+  Boolean(message && message.toLowerCase().includes("exists"));
 
 const isNotFoundError = (message?: string): boolean => {
   if (!message) {
@@ -87,15 +71,16 @@ export async function GET(
     const result = await getSupplierById(id);
 
     if (!result.success || !result.data) {
-      if (isNotFoundError(result.error)) {
+      const message = result.error ?? "Failed to fetch supplier";
+      if (isNotFoundError(message)) {
         return NextResponse.json(
-          { error: "Supplier not found" },
+          { success: false, error: "Supplier not found" },
           { status: 404 }
         );
       }
 
       return NextResponse.json(
-        { error: "Failed to fetch supplier" },
+        { success: false, error: message },
         { status: 500 }
       );
     }
@@ -106,7 +91,7 @@ export async function GET(
     );
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to fetch supplier" },
+      { success: false, error: getErrorMessage(error, "Failed to fetch supplier") },
       { status: 500 }
     );
   }
@@ -118,8 +103,29 @@ export async function PUT(
 ) {
   try {
     const { id } = params;
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = (await req.json()) as SupplierUpdatePayload;
-    const { name, phone, email, contact_person, address, tax_id } = body ?? {};
+    const {
+      name,
+      phone,
+      email,
+      contact_person,
+      address,
+      tax_id,
+      payment_terms,
+      website,
+      notes,
+    } = body ?? {};
+    const lead_time_days = parseOptionalNumber(body?.lead_time_days);
+    const moq = parseOptionalNumber(body?.moq);
 
     const result = await updateSupplier(id, {
       name,
@@ -128,20 +134,25 @@ export async function PUT(
       contact_person,
       address,
       tax_id,
-    });
+      payment_terms,
+      lead_time_days,
+      moq,
+      website,
+      notes,
+    }, user.id);
 
     if (!result.success || !result.data) {
       const message = result.error ?? "Failed to update supplier";
       if (isDuplicateNameError(message)) {
         return NextResponse.json(
-          { error: "Supplier with this name already exists" },
+          { success: false, error: "Supplier with this name already exists" },
           { status: 409 }
         );
       }
 
       return NextResponse.json(
-        { error: "Failed to update supplier" },
-        { status: 500 }
+        { success: false, error: message },
+        { status: isNotFoundError(message) ? 404 : 400 }
       );
     }
 
@@ -150,15 +161,16 @@ export async function PUT(
       { status: 200 }
     );
   } catch (error) {
-    if (isDuplicateNameError(error)) {
+    const message = getErrorMessage(error, "Failed to update supplier");
+    if (isDuplicateNameError(message)) {
       return NextResponse.json(
-        { error: "Supplier with this name already exists" },
+        { success: false, error: "Supplier with this name already exists" },
         { status: 409 }
       );
     }
 
     return NextResponse.json(
-      { error: getErrorMessage(error, "Failed to update supplier") },
+      { success: false, error: message },
       { status: 500 }
     );
   }
@@ -171,22 +183,31 @@ export async function DELETE(
   void req;
   try {
     const { id } = params;
-    const result = await deleteSupplier(id);
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!result.success) {
+    const result = await deleteSupplier(id, user.id);
+
+    if (!result.success || !result.data) {
       return NextResponse.json(
-        { error: "Failed to deactivate supplier" },
-        { status: 500 }
+        { success: false, error: result.error ?? "Failed to deactivate supplier" },
+        { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { success: true, message: "Supplier deactivated successfully" },
+      { success: true, data: result.data },
       { status: 200 }
     );
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to deactivate supplier" },
+      { success: false, error: getErrorMessage(error, "Failed to deactivate supplier") },
       { status: 500 }
     );
   }
