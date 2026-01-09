@@ -43,6 +43,18 @@ type ShiftStatus = {
   expected_drawer_balance: number;
 };
 
+type ShiftCashierRow = {
+  full_name?: string | null;
+};
+
+type ShiftWithCashierRow = ShiftSession & {
+  cashier?: ShiftCashierRow | ShiftCashierRow[] | null;
+};
+
+type ShiftWithCashier = ShiftSession & {
+  cashier?: { name: string } | null;
+};
+
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -278,6 +290,41 @@ export const getCurrentShift = async (
     return {
       success: false,
       error: getErrorMessage(error, 'Failed to fetch current shift'),
+    };
+  }
+};
+
+export const getAllShifts = async (): Promise<
+  ActionResponse<ShiftWithCashier[]>
+> => {
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.SHIFT_SESSIONS)
+      .select(`*, cashier:${TABLES.USERS}(full_name)`)
+      .order('start_time', { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const rows = (data ?? []) as ShiftWithCashierRow[];
+    const shifts = rows.map((row) => {
+      const cashier = Array.isArray(row.cashier) ? row.cashier[0] : row.cashier;
+      const cashierName =
+        typeof cashier?.full_name === 'string' ? cashier.full_name.trim() : '';
+      const { cashier: _cashier, ...rest } = row;
+
+      return {
+        ...rest,
+        cashier: cashierName ? { name: cashierName } : null,
+      };
+    });
+
+    return { success: true, data: shifts };
+  } catch (error) {
+    return {
+      success: false,
+      error: getErrorMessage(error, 'Failed to fetch shifts'),
     };
   }
 };

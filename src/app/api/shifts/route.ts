@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../utils/supabase/server";
-import { getCurrentShift, openShift } from "../../../lib/controllers/shiftController";
+import {
+  getAllShifts,
+  getCurrentShift,
+  openShift,
+} from "../../../lib/controllers/shiftController";
 
 type OpenShiftPayload = {
   starting_cash?: number | string;
@@ -35,8 +39,10 @@ const isOpenShiftConflict = (message: string): boolean => {
   return normalized.includes("open shift") && normalized.includes("already");
 };
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const loadAll = searchParams.get("all") === "true";
     const supabase = await createClient();
     const {
       data: { user },
@@ -47,6 +53,19 @@ export async function GET() {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
+      );
+    }
+
+    if (loadAll) {
+      const result = await getAllShifts();
+
+      if (!result.success) {
+        throw new Error(result.error ?? "Failed to fetch shifts");
+      }
+
+      return NextResponse.json(
+        { success: true, data: result.data ?? [] },
+        { status: 200 }
       );
     }
 
