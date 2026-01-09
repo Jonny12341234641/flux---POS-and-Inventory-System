@@ -36,7 +36,7 @@ export async function GET() {
 
     const dateString = getTodayDateString();
 
-    const salesReport = await getDailySalesReport(dateString);
+    const salesReport = await getDailySalesReport(supabase, dateString);
     if (!salesReport.success || !salesReport.data) {
       return NextResponse.json(
         { success: false, error: "Internal server error" },
@@ -44,7 +44,7 @@ export async function GET() {
       );
     }
 
-    const lowStock = await getLowStockProducts();
+    const lowStock = await getLowStockProducts(supabase);
     if (!lowStock.success || !lowStock.data) {
       return NextResponse.json(
         { success: false, error: "Internal server error" },

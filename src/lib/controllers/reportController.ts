@@ -1,5 +1,5 @@
-import { supabase } from '../../lib/supabase';
 import { ITEMS_PER_PAGE, TABLES } from '../../lib/constants';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   Product,
   Sale,
@@ -8,10 +8,17 @@ import type {
   StockMovement,
 } from '../../types';
 
+type PaginationMeta = {
+  current_page: number;
+  total_pages: number;
+  total_items: number;
+};
+
 type ControllerResult<T> = {
   success: boolean;
   data?: T;
   error?: string;
+  pagination?: PaginationMeta;
 };
 
 type StockMovementFilter = {
@@ -21,7 +28,9 @@ type StockMovementFilter = {
 
 type StockMovementWithRelations = StockMovement & {
   product?: { name: string } | null;
-  created_by_user?: { full_name: string } | null;
+  user?: { name: string } | null;
+  quantity: number;
+  reason?: string | null;
 };
 
 type ShiftHistoryRow = ShiftSession & {
@@ -32,6 +41,7 @@ type PaymentBreakdown = {
   cash: number;
   card: number;
   bank_transfer: number;
+  split: number;
 };
 
 type SalesReport = {
@@ -182,6 +192,7 @@ const RETURN_REQUESTS_TABLE = TABLES.RETURN_REQUESTS;
 const PRODUCT_BATCHES_TABLE = TABLES.PRODUCT_BATCHES;
 
 export const getStockMovements = async (
+  supabase: SupabaseClient,
   page = 1,
   filter?: StockMovementFilter
 ): Promise<ControllerResult<StockMovementWithRelations[]>> => {
@@ -193,7 +204,8 @@ export const getStockMovements = async (
     let query = supabase
       .from(TABLES.STOCK_MOVEMENTS)
       .select(
-        `*, product:${TABLES.PRODUCTS}(name), created_by_user:${TABLES.USERS}(full_name)`
+        `*, product:${TABLES.PRODUCTS}(name), created_by_user:${TABLES.USERS}(full_name)`,
+        { count: 'exact' }
       );
 
     if (filter?.productId) {
@@ -204,7 +216,7 @@ export const getStockMovements = async (
       query = query.eq('type', filter.type);
     }
 
-    const { data, error } = await query
+    const { data, error, count } = await query
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -213,17 +225,52 @@ export const getStockMovements = async (
     }
 
     const rawData = (data ?? []) as any[];
-    const movements = rawData.map((item) => ({
-      ...item,
-      product: Array.isArray(item.product) ? item.product[0] : item.product,
-      created_by_user: Array.isArray(item.created_by_user)
+    const totalItems = typeof count === 'number' ? count : rawData.length;
+    const movements = rawData.map((item) => {
+      const normalizedProduct = Array.isArray(item.product)
+        ? item.product[0]
+        : item.product ?? null;
+      const createdByUser = Array.isArray(item.created_by_user)
         ? item.created_by_user[0]
-        : item.created_by_user,
-    }));
+        : item.created_by_user;
+      const userName =
+        typeof createdByUser?.full_name === 'string'
+          ? createdByUser.full_name
+          : null;
+      const quantityValue =
+        typeof item.quantity_change !== 'undefined'
+          ? Number(item.quantity_change)
+          : Number(item.quantity);
+      const quantity = Number.isFinite(quantityValue) ? quantityValue : 0;
+      const reason =
+        typeof item.remarks === 'string' && item.remarks.trim()
+          ? item.remarks
+          : typeof item.reason === 'string' && item.reason.trim()
+            ? item.reason
+            : null;
+      const {
+        created_by_user: _created_by_user,
+        product: _product,
+        ...rest
+      } = item;
+
+      return {
+        ...rest,
+        product: normalizedProduct,
+        user: userName ? { name: userName } : null,
+        quantity,
+        reason,
+      };
+    });
 
     return {
       success: true,
       data: movements as StockMovementWithRelations[],
+      pagination: {
+        current_page: safePage,
+        total_pages: Math.ceil(totalItems / ITEMS_PER_PAGE),
+        total_items: totalItems,
+      },
     };
   } catch (error) {
     return {
@@ -234,6 +281,7 @@ export const getStockMovements = async (
 };
 
 export const getSalesReport = async (
+  supabase: SupabaseClient,
   startDate: string,
   endDate: string
 ): Promise<ControllerResult<SalesReport>> => {
@@ -260,6 +308,7 @@ export const getSalesReport = async (
       cash: 0,
       card: 0,
       bank_transfer: 0,
+      split: 0,
     };
 
     for (const row of rows) {
@@ -277,6 +326,8 @@ export const getSalesReport = async (
         paymentBreakdown.card += saleTotal;
       } else if (row.payment_method === 'bank_transfer') {
         paymentBreakdown.bank_transfer += saleTotal;
+      } else if (row.payment_method === 'split') {
+        paymentBreakdown.split += saleTotal;
       }
     }
 
@@ -319,9 +370,10 @@ export const getSalesReport = async (
 };
 
 export const getDailySalesReport = async (
+  supabase: SupabaseClient,
   date: string
 ): Promise<ControllerResult<SalesReport>> => {
-  const report = await getSalesReport(date, date);
+  const report = await getSalesReport(supabase, date, date);
   if (!report.success) {
     return {
       success: false,
@@ -332,6 +384,7 @@ export const getDailySalesReport = async (
 };
 
 export const getProfitSummary = async (
+  supabase: SupabaseClient,
   startDate: string,
   endDate: string
 ): Promise<ControllerResult<ProfitReport>> => {
@@ -431,6 +484,7 @@ export const getProfitSummary = async (
 };
 
 export const getTopSellingProducts = async (
+  supabase: SupabaseClient,
   startDate: string,
   endDate: string,
   limit = 10
@@ -495,6 +549,7 @@ export const getTopSellingProducts = async (
 };
 
 export const getExpiringBatchReport = async (
+  supabase: SupabaseClient,
   daysThreshold = 7
 ): Promise<ControllerResult<ExpiringBatch[]>> => {
   try {
@@ -555,6 +610,7 @@ export const getExpiringBatchReport = async (
 };
 
 export const getShiftHistory = async (
+  supabase: SupabaseClient,
   page = 1
 ): Promise<ControllerResult<ShiftHistoryRow[]>> => {
   try {
@@ -583,10 +639,11 @@ export const getShiftHistory = async (
 };
 
 export const getShiftDiscrepancyReport = async (
+  supabase: SupabaseClient,
   page = 1
 ): Promise<ControllerResult<ShiftHistoryRow[]>> => {
   try {
-    const history = await getShiftHistory(page);
+    const history = await getShiftHistory(supabase, page);
 
     if (!history.success || !history.data) {
       return {
@@ -620,9 +677,9 @@ export const getShiftDiscrepancyReport = async (
   }
 };
 
-export const getLowStockProducts = async (): Promise<
-  ControllerResult<Product[]>
-> => {
+export const getLowStockProducts = async (
+  supabase: SupabaseClient
+): Promise<ControllerResult<Product[]>> => {
   try {
     const { data, error } = await supabase
       .from(TABLES.PRODUCTS)

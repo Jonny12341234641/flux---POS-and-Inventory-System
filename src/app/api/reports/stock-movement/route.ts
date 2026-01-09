@@ -60,9 +60,23 @@ export async function GET(request: Request) {
     const type = normalizeStockMovementType(searchParams.get("type"));
     const productId = normalizeOptionalParam(searchParams.get("productId"));
 
-    const data = await getStockMovements(page, { type, productId });
+    const result = await getStockMovements(supabase, page, { type, productId });
 
-    return NextResponse.json({ success: true, data }, { status: 200 });
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error ?? "Internal server error" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: result.data ?? [],
+        pagination: result.pagination,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     return NextResponse.json(
       { success: false, error: "Internal server error" },
