@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { TABLES } from '../../lib/constants';
+import { LOW_STOCK_THRESHOLD, TABLES } from '../../lib/constants';
 import type { ActionResponse, Settings } from '../../types';
 
 type SettingsInsert = Omit<Settings, 'id' | 'updated_at'>;
@@ -7,9 +7,21 @@ type SettingsUpdate = Partial<SettingsInsert>;
 
 const SETTINGS_SINGLETON_ID = 1;
 
+const buildDefaultSettings = (): Settings => ({
+  id: SETTINGS_SINGLETON_ID,
+  store_name: 'Flux Store',
+  store_address: '123 Galle Road, Colombo',
+  store_phone: '+94 11 234 5678',
+  currency_symbol: 'LKR',
+  default_tax_rate: 2.5,
+  low_stock_threshold: LOW_STOCK_THRESHOLD,
+  receipt_footer: 'No refunds after 7 days',
+  updated_at: new Date().toISOString(),
+});
+
 const validateSettings = (data: SettingsUpdate): string | null => {
   if (typeof data.store_name !== 'undefined') {
-    if (data.store_name.trim().length < 2) {
+    if (typeof data.store_name !== 'string' || data.store_name.trim().length < 2) {
       return 'Store name must be at least 2 characters long.';
     }
   }
@@ -21,9 +33,47 @@ const validateSettings = (data: SettingsUpdate): string | null => {
     }
   }
 
-  if (typeof data.default_tax_rate === 'number') {
-    if (data.default_tax_rate < 0 || data.default_tax_rate > 1) {
-      return 'Tax rate must be between 0 (0%) and 1 (100%).';
+  if (typeof data.store_address !== 'undefined') {
+    if (typeof data.store_address !== 'string' || !data.store_address.trim()) {
+      return 'Store address is required.';
+    }
+  }
+
+  if (typeof data.store_phone !== 'undefined') {
+    if (typeof data.store_phone !== 'string' || !data.store_phone.trim()) {
+      return 'Store phone is required.';
+    }
+  }
+
+  if (typeof data.currency_symbol !== 'undefined') {
+    if (
+      typeof data.currency_symbol !== 'string' ||
+      !data.currency_symbol.trim()
+    ) {
+      return 'Currency symbol is required.';
+    }
+  }
+
+  if (typeof data.default_tax_rate !== 'undefined') {
+    if (data.default_tax_rate === null) {
+      return 'Tax rate must be a number.';
+    }
+    const parsedRate = Number(data.default_tax_rate);
+    if (!Number.isFinite(parsedRate)) {
+      return 'Tax rate must be a number.';
+    }
+    if (parsedRate < 0 || parsedRate > 100) {
+      return 'Tax rate must be between 0 and 100.';
+    }
+  }
+
+  if (typeof data.low_stock_threshold !== 'undefined') {
+    if (data.low_stock_threshold === null) {
+      return 'Low stock threshold must be a number.';
+    }
+    const parsedThreshold = Number(data.low_stock_threshold);
+    if (!Number.isFinite(parsedThreshold) || parsedThreshold < 0) {
+      return 'Low stock threshold must be 0 or higher.';
     }
   }
 
@@ -73,7 +123,7 @@ export const getSettings = async (): Promise<
 > => {
   try {
     const settings = await fetchSettingsRow();
-    return { success: true, data: settings };
+    return { success: true, data: settings ?? buildDefaultSettings() };
   } catch (error) {
     return {
       success: false,
