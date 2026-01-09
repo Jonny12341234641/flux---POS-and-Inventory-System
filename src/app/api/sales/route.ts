@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../utils/supabase/server';
-import { createSale } from '../../../lib/controllers/saleController';
+import { createSale, getSales } from '../../../lib/controllers/saleController';
 
 type SaleItemPayload = {
   product_id?: string;
@@ -14,11 +14,19 @@ type SaleItemPayload = {
 };
 
 type SalePayload = {
-  payment_method: 'cash' | 'card' | 'bank_transfer';
+  payment_method: 'cash' | 'card' | 'bank_transfer' | 'split';
   amount_paid: number;
   discount_total?: number;
   customer_id?: string | null;
   items?: SaleItemPayload[];
+  payments?: {
+    amount: number;
+    method: 'cash' | 'card' | 'bank_transfer';
+    reference_id?: string;
+  }[];
+  promo_code?: string;
+  approval_code?: string;
+  manager_id?: string;
 };
 
 type NormalizedSaleItem = {
@@ -35,10 +43,38 @@ const isInsufficientStock = (message: string) =>
 const isPaymentMethod = (
   value: unknown
 ): value is SalePayload['payment_method'] =>
-  value === 'cash' || value === 'card' || value === 'bank_transfer';
+  value === 'cash' ||
+  value === 'card' ||
+  value === 'bank_transfer' ||
+  value === 'split';
 
 const isNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
+
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const pageParam = searchParams.get('page');
+    const from = searchParams.get('from') ?? undefined;
+    const to = searchParams.get('to') ?? undefined;
+    const parsedPage = pageParam ? Number(pageParam) : 1;
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const dateRange = from || to ? { from, to } : undefined;
+
+    const result = await getSales(page, dateRange);
+
+    if (!result.success) {
+      throw new Error(result.error ?? 'Failed to fetch sales');
+    }
+
+    return NextResponse.json(result, { status: 200 });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to fetch sales';
+
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -59,6 +95,10 @@ export async function POST(request: Request) {
       discount_total,
       customer_id,
       items,
+      payments,
+      promo_code,
+      approval_code,
+      manager_id,
     } = body ?? {};
 
     if (!isPaymentMethod(payment_method)) {
@@ -113,6 +153,10 @@ export async function POST(request: Request) {
       amount_paid,
       discount_total,
       customer_id,
+      payments,
+      promo_code,
+      approval_code,
+      manager_id,
     };
 
     const result = await createSale(
