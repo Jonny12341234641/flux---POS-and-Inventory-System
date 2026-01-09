@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../../../utils/supabase/server";
 import { receiveGoods } from "../../../../../lib/controllers/orderController";
+import type { PurchaseItem } from "../../../../../types";
+
+type ReceiveGoodsItemInput = Pick<PurchaseItem, "product_id" | "quantity"> & {
+  unit_cost?: number;
+  expiry_date?: string;
+};
 
 const isAlreadyReceivedError = (message: string): boolean => {
   const normalized = message.toLowerCase();
@@ -33,8 +39,25 @@ export async function POST(
     }
 
     const { id } = params;
+    let body: { items?: ReceiveGoodsItemInput[] } = {};
 
-    const result = await receiveGoods(id, user.id);
+    try {
+      body = (await req.json()) as { items?: ReceiveGoodsItemInput[] };
+    } catch (parseError) {
+      void parseError;
+      body = {};
+    }
+
+    const { items } = body ?? {};
+
+    if (items !== undefined && !Array.isArray(items)) {
+      return NextResponse.json(
+        { success: false, error: "items must be an array" },
+        { status: 400 }
+      );
+    }
+
+    const result = await receiveGoods(id, user.id, items ?? []);
 
     if (!result.success) {
       throw new Error(result.error ?? "Failed to receive goods");

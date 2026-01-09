@@ -3,8 +3,32 @@ import { createClient } from "../../../../utils/supabase/server";
 import {
   cancelOrder,
   getPurchaseOrderById,
-  receiveGoods,
+  updatePurchaseOrder,
 } from "../../../../lib/controllers/orderController";
+import type { PurchaseItem, PurchaseOrder } from "../../../../types";
+
+type PurchaseItemInput = Pick<
+  PurchaseItem,
+  "product_id" | "quantity" | "unit_cost" | "expiry_date"
+> & {
+  total_cost?: number;
+};
+
+type PurchaseOrderUpdatePayload = Partial<
+  Pick<
+    PurchaseOrder,
+    | "supplier_id"
+    | "reference_number"
+    | "expected_date"
+    | "notes"
+    | "order_date"
+    | "payment_status"
+  >
+>;
+
+type UpdatePurchaseOrderBody = PurchaseOrderUpdatePayload & {
+  items?: PurchaseItemInput[];
+};
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message.trim()) {
@@ -21,17 +45,6 @@ const isNotFoundError = (message?: string): boolean => {
     return false;
   }
   return message.toLowerCase().includes("not found");
-};
-
-const isReceiveBadRequest = (message: string): boolean => {
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("already received") ||
-    normalized.includes("cannot receive") ||
-    normalized.includes("cancelled") ||
-    normalized.includes("no purchase items") ||
-    normalized.includes("not found")
-  );
 };
 
 export async function GET(
@@ -75,7 +88,6 @@ export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  void req;
   try {
     const supabase = await createClient();
     const {
@@ -91,29 +103,47 @@ export async function PUT(
     }
 
     const { id } = params;
-    const result = await receiveGoods(id, user.id);
+    const body = (await req.json()) as UpdatePurchaseOrderBody;
+    const {
+      items,
+      supplier_id,
+      reference_number,
+      expected_date,
+      notes,
+      order_date,
+      payment_status,
+    } = body ?? {};
 
-    if (!result.success) {
-      throw new Error(result.error ?? "Failed to receive goods");
+    if (!Array.isArray(items) || items.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "At least one item is required" },
+        { status: 400 }
+      );
+    }
+
+    const orderUpdates: PurchaseOrderUpdatePayload = {
+      supplier_id,
+      reference_number,
+      expected_date,
+      notes,
+      order_date,
+      payment_status,
+    };
+
+    const result = await updatePurchaseOrder(id, items, orderUpdates);
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error ?? "Failed to update purchase order");
     }
 
     return NextResponse.json(
       {
         success: true,
-        message: "Goods received and inventory updated successfully",
+        data: result.data,
       },
       { status: 200 }
     );
   } catch (error) {
-    const message = getErrorMessage(error, "Internal Server Error");
-
-    if (isReceiveBadRequest(message)) {
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 400 }
-      );
-    }
-
     return NextResponse.json(
       { success: false, error: "Internal Server Error" },
       { status: 500 }
