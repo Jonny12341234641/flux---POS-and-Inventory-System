@@ -36,6 +36,15 @@ const parsePage = (value: string | null): number => {
   return 1;
 };
 
+const parseOptionalString = (value: string | null): string | undefined => {
+  if (value === null) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+};
+
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -48,8 +57,15 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const query = searchParams.get("query") ?? "";
     const page = parsePage(searchParams.get("page"));
+    const categoryId = parseOptionalString(searchParams.get("categoryId"));
+    const supplierId = parseOptionalString(searchParams.get("supplierId"));
+    const status = parseOptionalString(searchParams.get("status"));
 
-    const result = await getProducts(query, page);
+    const result = await getProducts(query, page, {
+      categoryId,
+      supplierId,
+      status,
+    });
 
     if (!result.success) {
       throw new Error(result.error ?? "Failed to fetch products");

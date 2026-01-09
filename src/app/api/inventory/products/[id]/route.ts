@@ -4,6 +4,7 @@ import {
   getProductById,
   updateProduct,
 } from "../../../../../lib/controllers/inventoryController";
+import { createClient } from "../../../../../utils/supabase/server";
 
 const isDuplicateBarcodeError = (message: string): boolean => {
   const normalized = message.toLowerCase();
@@ -70,7 +71,19 @@ export async function PUT(
       );
     }
 
-    const result = await updateProduct(id, body);
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const result = await updateProduct(id, body, user.id);
 
     if (!result.success || !result.data) {
       const message = result.error ?? "Failed to update product";
