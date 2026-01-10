@@ -19,13 +19,14 @@ import {
 interface Shift {
   id: string;
   user_id: string;
-  cashier: { name: string };
+  cashier?: { name: string } | null;
   start_time: string;
   end_time?: string;
   starting_cash: number;
   ending_cash?: number;
   expected_cash?: number;
-  discrepancy?: number;
+  difference?: number;
+  cash_sales?: number;
   status: "open" | "closed";
 }
 
@@ -63,23 +64,10 @@ const formatDateTime = (value?: string) => {
   return date.toLocaleString();
 };
 
-const extractShifts = (data: unknown): Shift[] => {
-  if (Array.isArray(data)) {
-    return data as Shift[];
+const extractShifts = (data: any): Shift[] => {
+  if (data && data.success && Array.isArray(data.data)) {
+    return data.data as Shift[];
   }
-
-  if (data && typeof data === "object") {
-    const record = data as Record<string, unknown>;
-    const list =
-      (Array.isArray(record.data) && record.data) ||
-      (Array.isArray(record.shifts) && record.shifts) ||
-      (Array.isArray(record.history) && record.history);
-
-    if (Array.isArray(list)) {
-      return list as Shift[];
-    }
-  }
-
   return [];
 };
 
@@ -88,8 +76,8 @@ const resolveDiscrepancy = (shift: Shift): number | null => {
     return null;
   }
 
-  if (Number.isFinite(shift.discrepancy)) {
-    return shift.discrepancy as number;
+  if (Number.isFinite(shift.difference)) {
+    return shift.difference as number;
   }
 
   if (
@@ -260,6 +248,11 @@ export default function ShiftReportsPage() {
                             <div className="text-slate-700">
                               Starting: {formatCurrency(startingCash)}
                             </div>
+                            {Number.isFinite(shift.cash_sales) ? (
+                              <div className="text-emerald-600">
+                                Sales: {formatCurrency(shift.cash_sales!)}
+                              </div>
+                            ) : null}
                             <div className="text-slate-500">
                               Ending:{" "}
                               {endingCash === null
