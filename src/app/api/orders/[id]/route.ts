@@ -121,6 +121,27 @@ export async function PUT(
       );
     }
 
+    const normalizedItems = items.map((item: any) => ({
+      product_id: item.product_id ?? item.productId,
+      quantity: Number(item.quantity),
+      unit_cost: Number(item.unit_cost ?? item.unitCost),
+      expiry_date: item.expiry_date ?? item.expiryDate,
+    }));
+
+    const hasInvalidItems = normalizedItems.some(
+      (item) =>
+        !item.product_id ||
+        !Number.isFinite(item.quantity) ||
+        !Number.isFinite(item.unit_cost)
+    );
+
+    if (hasInvalidItems) {
+      return NextResponse.json(
+        { success: false, error: "Invalid items payload" },
+        { status: 400 }
+      );
+    }
+
     const orderUpdates: PurchaseOrderUpdatePayload = {
       supplier_id,
       reference_number,
@@ -130,7 +151,7 @@ export async function PUT(
       payment_status,
     };
 
-    const result = await updatePurchaseOrder(id, items, orderUpdates);
+    const result = await updatePurchaseOrder(id, normalizedItems, orderUpdates);
 
     if (!result.success || !result.data) {
       throw new Error(result.error ?? "Failed to update purchase order");

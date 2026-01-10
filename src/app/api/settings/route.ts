@@ -150,16 +150,11 @@ export async function PUT(req: Request) {
         ? rest.default_tax_rate
         : tax_rate;
 
-    if (typeof resolvedTaxRate === "undefined") {
-      return NextResponse.json(
-        { success: false, error: "Tax rate is required" },
-        { status: 400 }
-      );
-    }
-
     const payload = {
       ...rest,
-      default_tax_rate: resolvedTaxRate,
+      ...(typeof resolvedTaxRate !== "undefined"
+        ? { default_tax_rate: resolvedTaxRate }
+        : {}),
     };
 
     const supabase = await createClient();
