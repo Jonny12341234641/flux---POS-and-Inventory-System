@@ -15,11 +15,11 @@ import { Card, CardContent } from "../../../../components/ui/card";
 
 interface StockMovement {
   id: string;
-  product: { name: string };
+  product: { name: string } | null; // Allow null
   quantity: number;
   type: "sale" | "purchase" | "adjustment" | "return" | "damage";
-  reason?: string;
-  user: { name: string };
+  reason?: string | null; // Allow null
+  user: { name: string } | null; // Allow null
   created_at: string;
 }
 
@@ -81,64 +81,8 @@ const formatDateTime = (value: string) => {
 const formatQuantity = (value: number) =>
   new Intl.NumberFormat("en-US").format(value);
 
-const sortByNewest = (items: StockMovement[]) =>
-  [...items].sort((a, b) => {
-    const first = new Date(a.created_at).getTime();
-    const second = new Date(b.created_at).getTime();
-
-    return (
-      (Number.isNaN(second) ? 0 : second) -
-      (Number.isNaN(first) ? 0 : first)
-    );
-  });
-
-const extractMovements = (data: unknown): StockMovement[] => {
-  if (Array.isArray(data)) {
-    return data as StockMovement[];
-  }
-
-  if (data && typeof data === "object") {
-    const record = data as Record<string, unknown>;
-    const list =
-      (Array.isArray(record.data) && record.data) ||
-      (Array.isArray(record.movements) && record.movements) ||
-      (Array.isArray(record.logs) && record.logs);
-
-    if (Array.isArray(list)) {
-      return list as StockMovement[];
-    }
-  }
-
-  return [];
-};
-
-const extractTotalPages = (data: unknown): number | null => {
-  if (!data || typeof data !== "object") {
-    return null;
-  }
-
-  const record = data as Record<string, unknown>;
-  const pagination = record.pagination;
-
-  if (!pagination || typeof pagination !== "object") {
-    return null;
-  }
-
-  const meta = pagination as Record<string, unknown>;
-  const totalPages =
-    typeof meta.totalPages === "number"
-      ? meta.totalPages
-      : typeof meta.total_pages === "number"
-      ? meta.total_pages
-      : null;
-
-  if (typeof totalPages === "number" && Number.isFinite(totalPages)) {
-    return totalPages;
-  }
-
-  return null;
-};
-
+// NOTE: Search filtering is currently client-side only (filtering the fetched page),
+// as the backend API does not yet support a text search query parameter.
 const matchesSearch = (movement: StockMovement, normalizedTerm: string) => {
   if (!normalizedTerm) {
     return true;
@@ -191,9 +135,8 @@ export default function StockMovementLogsPage() {
         }
 
         const data = await response.json();
-        const extracted = extractMovements(data);
-        setMovements(sortByNewest(extracted));
-        setTotalPages(extractTotalPages(data));
+        setMovements(data.data || []);
+        setTotalPages(data.pagination?.total_pages ?? null);
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") {
           return;
