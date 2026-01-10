@@ -64,7 +64,7 @@ const SettingsSchema = z
       .preprocess(
         coerceNumber,
         z
-          .number({ invalid_type_error: "Tax rate must be a number" })
+          .number({ message: "Tax rate must be a number" })
           .min(0, "Tax rate must be between 0 and 100")
           .max(100, "Tax rate must be between 0 and 100")
       )
@@ -73,7 +73,7 @@ const SettingsSchema = z
       .preprocess(
         coerceNumber,
         z
-          .number({ invalid_type_error: "Tax rate must be a number" })
+          .number({ message: "Tax rate must be a number" })
           .min(0, "Tax rate must be between 0 and 100")
           .max(100, "Tax rate must be between 0 and 100")
       )
@@ -83,7 +83,7 @@ const SettingsSchema = z
         coerceNumber,
         z
           .number({
-            invalid_type_error: "Low stock threshold must be a number",
+            message: "Low stock threshold must be a number",
           })
           .int("Low stock threshold must be a whole number")
           .min(0, "Low stock threshold must be 0 or higher")
