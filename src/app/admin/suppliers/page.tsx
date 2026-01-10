@@ -13,9 +13,13 @@ import {
   Mail,
   Phone,
   Plus,
+  RotateCcw,
   Search,
   Trash,
   Truck,
+  CreditCard,
+  Globe,
+  Package,
 } from "lucide-react";
 
 import { Button } from "../../../components/ui/button";
@@ -31,6 +35,11 @@ interface Supplier {
   address?: string;
   tax_id?: string;
   is_active: boolean;
+  payment_terms?: string;
+  lead_time_days?: number;
+  moq?: number;
+  website?: string;
+  notes?: string;
 }
 
 interface SupplierFormData {
@@ -40,6 +49,11 @@ interface SupplierFormData {
   email: string;
   address: string;
   tax_id: string;
+  payment_terms: string;
+  lead_time_days: string;
+  moq: string;
+  website: string;
+  notes: string;
 }
 
 interface BadgeProps {
@@ -54,6 +68,11 @@ const DEFAULT_FORM_DATA: SupplierFormData = {
   email: "",
   address: "",
   tax_id: "",
+  payment_terms: "",
+  lead_time_days: "",
+  moq: "",
+  website: "",
+  notes: "",
 };
 
 const Badge = ({ className, label }: BadgeProps) => (
@@ -78,14 +97,24 @@ const Textarea = ({
   />
 );
 
-const buildPayload = (data: SupplierFormData) => ({
-  name: data.name.trim(),
-  contact_person: data.contact_person.trim() || undefined,
-  phone: data.phone.trim() || undefined,
-  email: data.email.trim() || undefined,
-  address: data.address.trim() || undefined,
-  tax_id: data.tax_id.trim() || undefined,
-});
+const buildPayload = (data: SupplierFormData) => {
+  const leadTime = parseInt(data.lead_time_days, 10);
+  const moq = parseInt(data.moq, 10);
+
+  return {
+    name: data.name.trim(),
+    contact_person: data.contact_person.trim() || undefined,
+    phone: data.phone.trim() || undefined,
+    email: data.email.trim() || undefined,
+    address: data.address.trim() || undefined,
+    tax_id: data.tax_id.trim() || undefined,
+    payment_terms: data.payment_terms.trim() || undefined,
+    lead_time_days: !isNaN(leadTime) ? leadTime : undefined,
+    moq: !isNaN(moq) ? moq : undefined,
+    website: data.website.trim() || undefined,
+    notes: data.notes.trim() || undefined,
+  };
+};
 
 const toFormData = (supplier: Supplier): SupplierFormData => ({
   name: supplier.name ?? "",
@@ -94,6 +123,11 @@ const toFormData = (supplier: Supplier): SupplierFormData => ({
   email: supplier.email ?? "",
   address: supplier.address ?? "",
   tax_id: supplier.tax_id ?? "",
+  payment_terms: supplier.payment_terms ?? "",
+  lead_time_days: supplier.lead_time_days?.toString() ?? "",
+  moq: supplier.moq?.toString() ?? "",
+  website: supplier.website ?? "",
+  notes: supplier.notes ?? "",
 });
 
 const extractSuppliers = (data: unknown): Supplier[] => {
@@ -265,6 +299,34 @@ export default function SuppliersPage() {
     }
   };
 
+  const handleReactivate = async (supplier: Supplier) => {
+    if (supplier.is_active) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Reactivate ${supplier.name}?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/suppliers/${supplier.id}/reactivate`, {
+        method: "POST", // Assuming POST for action-based routes, could be PUT
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reactivate supplier.");
+      }
+
+      await fetchSuppliers();
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "Unable to update supplier."
+      );
+    }
+  };
+
   return (
     <div className="space-y-6 pb-16">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -387,17 +449,29 @@ export default function SuppliersPage() {
                               <Edit className="h-4 w-4" />
                               Edit
                             </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDelete(supplier)}
-                              disabled={!supplier.is_active}
-                              className="inline-flex items-center gap-2 text-red-600 disabled:cursor-not-allowed disabled:text-slate-400"
-                            >
-                              <Trash className="h-4 w-4" />
-                              Delete
-                            </Button>
+                            {isInactive ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleReactivate(supplier)}
+                                className="inline-flex items-center gap-2 text-emerald-600"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                                Reactivate
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDelete(supplier)}
+                                className="inline-flex items-center gap-2 text-red-600"
+                              >
+                                <Trash className="h-4 w-4" />
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -412,7 +486,7 @@ export default function SuppliersPage() {
 
       {isModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <Card className="w-full max-w-2xl">
+          <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <CardContent className="space-y-6 p-6">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">
@@ -432,7 +506,7 @@ export default function SuppliersPage() {
                       htmlFor="supplier-name"
                       className="text-sm font-medium text-slate-700"
                     >
-                      Supplier Name
+                      Supplier Name <span className="text-red-500">*</span>
                     </label>
                     <Input
                       id="supplier-name"
@@ -511,6 +585,77 @@ export default function SuppliersPage() {
                       placeholder="TAX-0001234"
                     />
                   </div>
+                   <div className="space-y-2">
+                    <label
+                      htmlFor="supplier-website"
+                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
+                    >
+                      <Globe className="h-4 w-4 text-slate-400" />
+                      Website
+                    </label>
+                    <Input
+                      id="supplier-website"
+                      name="website"
+                      value={formData.website}
+                      onChange={handleInputChange}
+                      placeholder="https://acme.com"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="supplier-payment-terms"
+                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
+                    >
+                      <CreditCard className="h-4 w-4 text-slate-400" />
+                      Payment Terms
+                    </label>
+                    <Input
+                      id="supplier-payment-terms"
+                      name="payment_terms"
+                      value={formData.payment_terms}
+                      onChange={handleInputChange}
+                      placeholder="Net 30, COD, etc."
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="supplier-lead-time"
+                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
+                    >
+                      <Truck className="h-4 w-4 text-slate-400" />
+                      Lead Time (Days)
+                    </label>
+                    <Input
+                      id="supplier-lead-time"
+                      name="lead_time_days"
+                      type="number"
+                      min="0"
+                      value={formData.lead_time_days}
+                      onChange={handleInputChange}
+                      placeholder="7"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="supplier-moq"
+                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
+                    >
+                      <Package className="h-4 w-4 text-slate-400" />
+                      MOQ
+                    </label>
+                    <Input
+                      id="supplier-moq"
+                      name="moq"
+                      type="number"
+                      min="0"
+                      value={formData.moq}
+                      onChange={handleInputChange}
+                      placeholder="100"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -526,6 +671,22 @@ export default function SuppliersPage() {
                     value={formData.address}
                     onChange={handleInputChange}
                     placeholder="Street, City, Province"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label
+                    htmlFor="supplier-notes"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    Notes
+                  </label>
+                  <Textarea
+                    id="supplier-notes"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    placeholder="Internal notes about this supplier..."
                   />
                 </div>
 

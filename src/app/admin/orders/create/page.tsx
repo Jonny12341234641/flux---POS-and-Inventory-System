@@ -94,7 +94,7 @@ export default function CreatePurchaseOrderPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/suppliers?active=true", {
+        const response = await fetch("/api/suppliers?active=true&limit=1000", {
           cache: "no-store",
           signal: controller.signal,
         });
