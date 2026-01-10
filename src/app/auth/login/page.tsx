@@ -12,11 +12,9 @@ import {
   CardTitle,
 } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
-import { createClient } from "../../../utils/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -32,19 +30,27 @@ export default function LoginPage() {
     setError(null);
     setIsSubmitting(true);
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
 
-    if (signInError) {
-      setError(signInError.message);
+      if (response.ok) {
+        router.refresh();
+        router.replace("/pos");
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to sign in. Please check your credentials.");
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
       setIsSubmitting(false);
-      return;
     }
-
-    router.replace("/pos");
-    router.refresh();
   };
 
   return (

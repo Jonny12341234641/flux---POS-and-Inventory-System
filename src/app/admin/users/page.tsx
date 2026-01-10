@@ -63,68 +63,36 @@ const formatJoinDate = (value: string) => {
 };
 
 const extractUsers = (data: unknown): User[] => {
-  if (Array.isArray(data)) {
-    return data as User[];
-  }
+  let list: any[] = [];
 
-  if (data && typeof data === "object") {
+  if (Array.isArray(data)) {
+    list = data;
+  } else if (data && typeof data === "object") {
     const record = data as Record<string, unknown>;
     const directList =
       (Array.isArray(record.data) && record.data) ||
       (Array.isArray(record.users) && record.users);
 
     if (Array.isArray(directList)) {
-      return directList as User[];
-    }
-
-    if (record.data && typeof record.data === "object") {
+      list = directList;
+    } else if (record.data && typeof record.data === "object") {
       const nested = record.data as Record<string, unknown>;
       const nestedList =
         (Array.isArray(nested.data) && nested.data) ||
         (Array.isArray(nested.users) && nested.users);
 
       if (Array.isArray(nestedList)) {
-        return nestedList as User[];
+        list = nestedList;
       }
     }
   }
 
-  return [];
+  return list.map((user) => ({
+    ...user,
+    name: user.full_name || user.name || "",
+  })) as User[];
 };
 
-const extractCurrentUserId = (data: unknown): string => {
-  if (!data || typeof data !== "object") {
-    return "";
-  }
-
-  const record = data as Record<string, unknown>;
-
-  if (typeof record.id === "string") {
-    return record.id;
-  }
-
-  if (record.user && typeof record.user === "object") {
-    const userRecord = record.user as Record<string, unknown>;
-    if (typeof userRecord.id === "string") {
-      return userRecord.id;
-    }
-  }
-
-  if (record.data && typeof record.data === "object") {
-    const dataRecord = record.data as Record<string, unknown>;
-    if (typeof dataRecord.id === "string") {
-      return dataRecord.id;
-    }
-    if (dataRecord.user && typeof dataRecord.user === "object") {
-      const nestedUser = dataRecord.user as Record<string, unknown>;
-      if (typeof nestedUser.id === "string") {
-        return nestedUser.id;
-      }
-    }
-  }
-
-  return "";
-};
 
 const RoleBadge = ({ role }: { role: User["role"] }) => {
   const config = ROLE_CONFIG[role];
@@ -189,9 +157,8 @@ export default function UsersPage() {
       }
 
       const data = await response.json();
-      const id = extractCurrentUserId(data);
-      if (id) {
-        setCurrentUserId(id);
+      if (data.success && data.user) {
+        setCurrentUserId(data.user.id);
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
