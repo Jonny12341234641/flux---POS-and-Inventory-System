@@ -47,8 +47,18 @@ type PurchaseOrderWithSupplier = PurchaseOrder & {
   supplier?: { name: string } | null;
 };
 
+type PurchaseItemWithProduct = PurchaseItem & {
+  product?: { name: string } | null;
+};
+
 type PurchaseOrderWithItems = PurchaseOrder & {
-  purchase_items: PurchaseItem[];
+  supplier?: {
+    name: string;
+    contact_person?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  } | null;
+  purchase_items: PurchaseItemWithProduct[];
 };
 
 type ReceiveGoodsResult = {
@@ -402,7 +412,9 @@ export const getPurchaseOrderById = async (
   try {
     const { data, error } = await supabase
       .from(TABLES.PURCHASE_ORDERS)
-      .select(`*, ${TABLES.PURCHASE_ITEMS}(*)`)
+      .select(
+        `*, supplier:${TABLES.SUPPLIERS}(name, contact_person, phone, email), ${TABLES.PURCHASE_ITEMS}(*, product:${TABLES.PRODUCTS}(name))`
+      )
       .eq('id', id)
       .single();
 

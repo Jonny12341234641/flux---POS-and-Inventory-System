@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "../../../../utils/supabase/server";
 import {
   deleteUser,
   getUserById,
   updateUser,
-} from "@/lib/controllers/userController";
+} from "../../../../lib/controllers/userController";
 
 type UserRole = "admin" | "cashier";
 
 type UpdateUserBody = {
   name?: unknown;
+  full_name?: unknown;
   role?: unknown;
 };
 
@@ -110,12 +111,14 @@ export async function PUT(req: Request, { params }: RouteContext) {
 
     const body = (await req.json()) as UpdateUserBody;
     const name = parseTrimmedString(body?.name);
+    const fullName = parseTrimmedString(body?.full_name);
+    const resolvedName = fullName ?? name;
     const role = parseRole(body?.role);
 
     const payload: { full_name?: string; role?: UserRole } = {};
 
-    if (typeof name !== "undefined") {
-      payload.full_name = name;
+    if (typeof resolvedName !== "undefined") {
+      payload.full_name = resolvedName;
     }
 
     if (typeof role !== "undefined") {

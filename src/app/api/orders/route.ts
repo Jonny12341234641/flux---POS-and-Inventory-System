@@ -53,7 +53,14 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { supplier_id, expected_date, notes, reference_number, items } =
+    const {
+      supplier_id,
+      expected_date,
+      notes,
+      reference_number,
+      items,
+      payment_status,
+    } =
       body ?? {};
 
     if (!isPresent(supplier_id)) {
@@ -99,6 +106,9 @@ export async function POST(req: Request) {
       notes,
       reference_number,
       created_by: user.id,
+      ...(typeof payment_status === "string"
+        ? { payment_status }
+        : {}),
     };
 
     const result = await createPurchaseOrder(orderData, normalizedItems);

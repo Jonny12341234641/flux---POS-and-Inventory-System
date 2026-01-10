@@ -30,6 +30,23 @@ type UpdatePurchaseOrderBody = PurchaseOrderUpdatePayload & {
   items?: PurchaseItemInput[];
 };
 
+type PurchaseItemWithProduct = PurchaseItem & {
+  product?: { name?: string | null } | null;
+  product_name?: string | null;
+};
+
+type PurchaseOrderWithDetails = PurchaseOrder & {
+  supplier?: {
+    name?: string | null;
+    contact_person?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    [key: string]: unknown;
+  } | null;
+  purchase_items?: PurchaseItemWithProduct[];
+  items?: PurchaseItemWithProduct[];
+};
+
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -45,6 +62,68 @@ const isNotFoundError = (message?: string): boolean => {
     return false;
   }
   return message.toLowerCase().includes("not found");
+};
+
+const normalizePurchaseOrder = (order: PurchaseOrderWithDetails) => {
+  const supplierRecord =
+    order.supplier && typeof order.supplier === "object" ? order.supplier : null;
+  const supplierName =
+    typeof supplierRecord?.name === "string" ? supplierRecord.name : "";
+  const supplier = supplierRecord
+    ? {
+        ...supplierRecord,
+        name: supplierName,
+        contact_person:
+          typeof supplierRecord.contact_person === "string"
+            ? supplierRecord.contact_person
+            : supplierRecord.contact_person ?? undefined,
+        phone:
+          typeof supplierRecord.phone === "string"
+            ? supplierRecord.phone
+            : supplierRecord.phone ?? undefined,
+        email:
+          typeof supplierRecord.email === "string"
+            ? supplierRecord.email
+            : supplierRecord.email ?? undefined,
+      }
+    : undefined;
+
+  const purchaseItems = Array.isArray(order.purchase_items)
+    ? order.purchase_items
+    : Array.isArray(order.items)
+    ? order.items
+    : [];
+  const items = purchaseItems.map((item) => {
+    const productName =
+      typeof item.product?.name === "string"
+        ? item.product?.name
+        : typeof item.product_name === "string"
+        ? item.product_name
+        : "";
+    const quantity = Number.isFinite(item.quantity) ? item.quantity : 0;
+    const unitCost = Number.isFinite(item.unit_cost) ? item.unit_cost : 0;
+    const computedTotal = quantity * unitCost;
+    const totalCost =
+      Number.isFinite(item.total_cost) && item.total_cost !== 0
+        ? item.total_cost
+        : computedTotal;
+
+    return {
+      id: item.id,
+      product_id: item.product_id,
+      product_name: productName,
+      quantity: item.quantity,
+      unit_cost: item.unit_cost,
+      total_cost: totalCost,
+      expiry_date: item.expiry_date,
+    };
+  });
+
+  return {
+    ...order,
+    supplier,
+    items,
+  };
 };
 
 export async function GET(
@@ -72,8 +151,12 @@ export async function GET(
       );
     }
 
+    const normalized = normalizePurchaseOrder(
+      result.data as PurchaseOrderWithDetails
+    );
+
     return NextResponse.json(
-      { success: true, data: result.data },
+      { success: true, data: normalized },
       { status: 200 }
     );
   } catch (error) {

@@ -6,6 +6,7 @@ type UserRole = "admin" | "cashier";
 
 type CreateUserBody = {
   name?: unknown;
+  full_name?: unknown;
   email?: unknown;
   role?: unknown;
   password?: unknown;
@@ -105,11 +106,13 @@ export async function POST(req: Request) {
 
     const body = (await req.json()) as CreateUserBody;
     const name = parseTrimmedString(body?.name);
+    const fullName = parseTrimmedString(body?.full_name);
+    const resolvedName = fullName ?? name;
     const email = parseTrimmedString(body?.email);
     const role = parseRole(body?.role);
     const password = parseTrimmedString(body?.password);
 
-    if (!name || !email || !role || !password) {
+    if (!resolvedName || !email || !role || !password) {
       return NextResponse.json(
         { success: false, error: "Invalid user payload" },
         { status: 400 }
@@ -126,7 +129,7 @@ export async function POST(req: Request) {
 
     const payload = {
       username,
-      full_name: name,
+      full_name: resolvedName,
       email,
       role,
       password,

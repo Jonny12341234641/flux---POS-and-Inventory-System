@@ -1391,7 +1391,9 @@ export const getSaleById = async (
   try {
     const { data, error } = await supabase
       .from(TABLES.SALES)
-      .select(`*, ${TABLES.SALE_ITEMS}(*), ${TABLES.SALE_PAYMENTS}(*)`)
+      .select(
+        `*, cashier:${TABLES.USERS}(full_name), ${TABLES.SALE_ITEMS}(*, product:${TABLES.PRODUCTS}(name)), ${TABLES.SALE_PAYMENTS}(*)`
+      )
       .eq('id', id)
       .single();
 

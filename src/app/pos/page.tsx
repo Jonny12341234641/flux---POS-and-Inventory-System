@@ -8,6 +8,45 @@ interface CartItem extends Product {
   quantity: number;
 }
 
+const parseNumber = (value: unknown, fallback = 0) => {
+  const parsed =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const resolveTaxRate = (value: unknown, fallback: number) => {
+  const parsed = parseNumber(value, Number.NaN);
+  if (Number.isFinite(parsed)) {
+    return parsed;
+  }
+  const fallbackParsed = parseNumber(fallback, 0);
+  return Number.isFinite(fallbackParsed) ? fallbackParsed : 0;
+};
+
+const extractDefaultTaxRate = (data: unknown) => {
+  if (!data || typeof data !== 'object') {
+    return 0;
+  }
+
+  const record = data as Record<string, unknown>;
+  const payload =
+    (record.data as Record<string, unknown> | undefined) ??
+    (record.settings as Record<string, unknown> | undefined) ??
+    record;
+
+  return parseNumber(
+    payload.default_tax_rate ??
+      payload.tax_rate ??
+      payload.defaultTaxRate ??
+      payload.taxRate,
+    0
+  );
+};
+
 export default function POSPage() {
   // --- STATE MANAGEMENT ---
   const [products, setProducts] = useState<Product[]>([]);
@@ -17,6 +56,7 @@ export default function POSPage() {
   const [loading, setLoading] = useState(true);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [defaultTaxRate, setDefaultTaxRate] = useState(0);
 
   // --- 1. FETCH PRODUCTS FROM API ---
   const fetchProducts = async (signal?: AbortSignal) => {
@@ -50,6 +90,34 @@ export default function POSPage() {
     }
   }, [searchQuery, page]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings', {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        if (!controller.signal.aborted) {
+          setDefaultTaxRate(extractDefaultTaxRate(data));
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    };
+
+    fetchSettings();
+
+    return () => controller.abort();
+  }, []);
+
   // Reset page when search changes
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -79,8 +147,22 @@ export default function POSPage() {
   };
 
   // --- 3. CALCULATE TOTALS ---
-  const subTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const tax = subTotal * 0.10; // 10% Tax
+  const totals = cart.reduce(
+    (acc, item) => {
+      const quantity = parseNumber(item.quantity, 0);
+      const unitPrice = parseNumber(item.price, 0);
+      const lineSubTotal = unitPrice * quantity;
+      const taxRate = resolveTaxRate(item.tax_rate, defaultTaxRate);
+      const lineTax =
+        taxRate > 0 ? Math.max(lineSubTotal, 0) * taxRate : 0;
+
+      acc.subTotal += lineSubTotal;
+      acc.tax += lineTax;
+      return acc;
+    },
+    { subTotal: 0, tax: 0 }
+  );
+  const { subTotal, tax } = totals;
   const grandTotal = subTotal + tax;
 
   // --- 4. CHECKOUT LOGIC ---
@@ -251,7 +333,7 @@ export default function POSPage() {
             <span>${subTotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between mb-4">
-            <span className="text-gray-600">Tax (10%)</span>
+            <span className="text-gray-600">Tax</span>
             <span>${tax.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-2xl font-bold mb-6">

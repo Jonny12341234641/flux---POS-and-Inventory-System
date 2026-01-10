@@ -1,6 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../utils/supabase/server';
 import { getSaleById, refundSale } from '../../../../lib/controllers/saleController';
+import type { Sale, SaleItem } from '../../../../types';
+
+type SaleItemWithProduct = SaleItem & {
+  product?: { name?: string | null } | null;
+  product_name?: string | null;
+};
+
+type SaleDetailsRecord = Sale & {
+  cashier?: { full_name?: string | null; name?: string | null; [key: string]: unknown } | null;
+  sale_items?: SaleItemWithProduct[];
+  items?: SaleItemWithProduct[];
+  total_amount?: number;
+};
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message.trim()) {
@@ -20,6 +33,70 @@ const isRefundError = (message: string): boolean => {
     normalized.includes('sale id is required') ||
     normalized.includes('not found')
   );
+};
+
+const normalizeSaleDetails = (sale: SaleDetailsRecord) => {
+  const cashierRecord =
+    sale.cashier && typeof sale.cashier === 'object' ? sale.cashier : null;
+  const resolvedCashierName =
+    typeof cashierRecord?.full_name === 'string'
+      ? cashierRecord.full_name
+      : typeof cashierRecord?.name === 'string'
+        ? cashierRecord.name
+        : '';
+  const cashier = cashierRecord
+    ? {
+        ...cashierRecord,
+        ...(resolvedCashierName ? { name: resolvedCashierName } : {}),
+      }
+    : resolvedCashierName
+      ? { name: resolvedCashierName }
+      : undefined;
+
+  const saleItems = Array.isArray(sale.sale_items)
+    ? sale.sale_items
+    : Array.isArray(sale.items)
+      ? sale.items
+      : [];
+  const items = saleItems.map((item) => {
+    const productName =
+      typeof item.product?.name === 'string'
+        ? item.product.name
+        : typeof item.product_name === 'string'
+          ? item.product_name
+          : '';
+    const quantity = Number.isFinite(item.quantity) ? item.quantity : 0;
+    const unitPrice = Number.isFinite(item.unit_price) ? item.unit_price : 0;
+    const computedTotal = quantity * unitPrice;
+    const total =
+      Number.isFinite(item.sub_total) && item.sub_total !== 0
+        ? item.sub_total
+        : computedTotal;
+
+    return {
+      id: item.id,
+      product_id: item.product_id,
+      product_name: productName,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      total,
+    };
+  });
+
+  const totalAmount =
+    Number.isFinite(sale.total_amount)
+      ? sale.total_amount
+      : Number.isFinite(sale.grand_total)
+        ? sale.grand_total
+        : undefined;
+  const resolvedCashier = cashier ?? sale.cashier;
+
+  return {
+    ...sale,
+    ...(resolvedCashier ? { cashier: resolvedCashier } : {}),
+    items,
+    ...(typeof totalAmount !== 'undefined' ? { total_amount: totalAmount } : {}),
+  };
 };
 
 export async function GET(
@@ -53,8 +130,10 @@ export async function GET(
       throw new Error(message);
     }
 
+    const normalized = normalizeSaleDetails(result.data as SaleDetailsRecord);
+
     return NextResponse.json(
-      { success: true, data: result.data },
+      { success: true, data: normalized },
       { status: 200 }
     );
   } catch (error) {

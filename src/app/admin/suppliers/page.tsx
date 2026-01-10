@@ -161,7 +161,7 @@ export default function SuppliersPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/suppliers", {
+      const response = await fetch("/api/suppliers?active=false", {
         cache: "no-store",
         signal,
       });
@@ -312,7 +312,7 @@ export default function SuppliersPage() {
 
     try {
       const response = await fetch(`/api/suppliers/${supplier.id}/reactivate`, {
-        method: "POST", // Assuming POST for action-based routes, could be PUT
+        method: "PATCH",
       });
 
       if (!response.ok) {
