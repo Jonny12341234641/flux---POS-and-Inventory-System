@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
-import { createUser, getUsers } from "@/lib/controllers/userController";
+import { createClient } from "../../../utils/supabase/server";
+import { createUser, getUsers } from "../../../lib/controllers/userController";
 
 type UserRole = "admin" | "cashier";
 

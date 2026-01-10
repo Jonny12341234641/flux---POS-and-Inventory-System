@@ -136,7 +136,9 @@ export default function CategoriesPage() {
       });
 
       if (!response.ok) {
+        const errorData = await response.json();
         throw new Error(
+            errorData.error || errorData.message || 
           `Failed to ${currentCategory ? "update" : "create"} category (status ${
             response.status
           }).`

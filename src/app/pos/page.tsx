@@ -13,26 +13,50 @@ export default function POSPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // --- 1. FETCH PRODUCTS FROM API ---
-  useEffect(() => {
-    async function fetchProducts() {
-      try {
-        const res = await fetch('/api/inventory/products'); // Calls your Backend Route
-        const data = await res.json();
-        // Handle different response structures
-        const productList = Array.isArray(data) ? data : (data.data || []);
-        setProducts(productList);
-      } catch (error) {
-        console.error("Failed to load products", error);
-      } finally {
-        setLoading(false);
-      }
+  const fetchProducts = async (signal?: AbortSignal) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        query: searchQuery
+      });
+      const res = await fetch(`/api/inventory/products?${params.toString()}`, { signal }); // Calls your Backend Route
+      const data = await res.json();
+      // Handle different response structures
+      const productList = Array.isArray(data) ? data : (data.data || []);
+      setProducts(productList);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      console.error("Failed to load products", error);
+    } finally {
+      setLoading(false);
     }
-    fetchProducts();
-  }, []);
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      fetchProducts(controller.signal);
+    }, 500);
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    }
+  }, [searchQuery, page]);
+
+  // Reset page when search changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setPage(1);
+  };
+
+  const handlePrevPage = () => setPage(p => Math.max(1, p - 1));
+  const handleNextPage = () => setPage(p => p + 1);
 
   // --- 2. CART LOGIC ---
   const addToCart = (product: Product) => {
@@ -95,12 +119,6 @@ export default function POSPage() {
     }
   };
 
-  // --- 5. FILTERING ---
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    p.barcode?.includes(searchQuery)
-  );
-
   return (
     <div className="flex h-screen bg-gray-100 text-black">
       
@@ -114,17 +132,17 @@ export default function POSPage() {
             placeholder="Search product or barcode..."
             className="p-3 w-1/2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={handleSearchChange}
           />
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-3 gap-4">
+        <div className="flex-1 overflow-y-auto grid grid-cols-3 gap-4 pb-4">
           {loading ? (
-            <p className="text-gray-500">Loading inventory...</p>
-          ) : filteredProducts.length === 0 ? (
+            <p className="text-gray-500 col-span-3 text-center">Loading inventory...</p>
+          ) : products.length === 0 ? (
             <p className="text-gray-500 col-span-3 text-center">No products found.</p>
-          ) : filteredProducts.map((product) => (
+          ) : products.map((product) => (
             <div 
               key={product.id} 
               onClick={() => addToCart(product)}
@@ -146,6 +164,25 @@ export default function POSPage() {
               </div>
             </div>
           ))}
+        </div>
+        
+        {/* Pagination Controls */}
+        <div className="mt-4 flex justify-between items-center border-t pt-4">
+            <button 
+                onClick={handlePrevPage} 
+                disabled={page === 1 || loading}
+                className="px-4 py-2 bg-white border rounded shadow-sm disabled:opacity-50"
+            >
+                Previous
+            </button>
+            <span className="text-gray-600">Page {page}</span>
+            <button 
+                onClick={handleNextPage} 
+                disabled={products.length < 20 || loading}
+                className="px-4 py-2 bg-white border rounded shadow-sm disabled:opacity-50"
+            >
+                Next
+            </button>
         </div>
       </div>
 

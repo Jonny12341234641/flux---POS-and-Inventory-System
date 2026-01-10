@@ -78,72 +78,80 @@ export default function CreatePurchaseOrderPage() {
     DEFAULT_CURRENT_ITEM
   );
   const [loading, setLoading] = useState(true);
+  const [productSearchTerm, setProductSearchTerm] = useState(""); // Added
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch Suppliers (Initial Load)
   useEffect(() => {
     const controller = new AbortController();
 
-    const loadData = async () => {
+    const fetchSuppliers = async () => {
       setLoading(true);
       setError(null);
-
       try {
-        const [suppliersResponse, productsResponse] = await Promise.all([
-          fetch("/api/suppliers?active=true", {
-            cache: "no-store",
-            signal: controller.signal,
-          }),
-          fetch("/api/inventory/products", {
-            cache: "no-store",
-            signal: controller.signal,
-          }),
-        ]);
+        const response = await fetch("/api/suppliers?active=true", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
 
-        if (!suppliersResponse.ok) {
-          throw new Error(
-            `Failed to load suppliers (status ${suppliersResponse.status}).`
-          );
+        if (!response.ok) {
+          throw new Error(`Failed to load suppliers (status ${response.status}).`);
         }
 
-        if (!productsResponse.ok) {
-          throw new Error(
-            `Failed to load products (status ${productsResponse.status}).`
-          );
-        }
-
-        const [suppliersData, productsData] = await Promise.all([
-          suppliersResponse.json(),
-          productsResponse.json(),
-        ]);
-
-        const loadedSuppliers = extractList<Supplier>(suppliersData, "suppliers")
-          .filter((supplier) => supplier.active !== false);
-
-        setSuppliers(loadedSuppliers);
-        setProducts(extractList<Product>(productsData, "products"));
+        const data = await response.json();
+        setSuppliers(extractList<Supplier>(data, "suppliers").filter(s => s.active !== false));
       } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") {
-          return;
-        }
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load suppliers and products."
-        );
-        setSuppliers([]);
-        setProducts([]);
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setError(err instanceof Error ? err.message : "Failed to load suppliers.");
       } finally {
         setLoading(false);
       }
     };
 
-    loadData();
-
+    fetchSuppliers();
     return () => controller.abort();
   }, []);
+
+  // Fetch Products with Debounce
+  useEffect(() => {
+    const controller = new AbortController();
+    
+    const fetchProducts = async () => {
+      // Don't set global loading here to avoid flickering the whole page
+      // Maybe add a small loading indicator for the dropdown?
+      // For now, we'll just fetch quietly or use a separate loading state if needed.
+      
+      try {
+        const params = new URLSearchParams({ query: productSearchTerm });
+        const response = await fetch(`/api/inventory/products?${params.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+           console.error("Failed to load products"); // Just log, don't break page
+           return;
+        }
+
+        const data = await response.json();
+        setProducts(extractList<Product>(data, "products"));
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        console.error(err);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+        fetchProducts();
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [productSearchTerm]);
 
   const handleProductChange = (productId: string) => {
     const selectedProduct = products.find(
@@ -376,6 +384,13 @@ export default function CreatePurchaseOrderPage() {
               <label className="text-sm font-medium text-slate-700">
                 Product
               </label>
+               {/* Added Search Input */}
+              <Input
+                placeholder="Search Product..."
+                value={productSearchTerm}
+                onChange={(e) => setProductSearchTerm(e.target.value)}
+                className="mb-2"
+              />
               <select
                 value={currentItem.product_id}
                 onChange={(event) => handleProductChange(event.target.value)}

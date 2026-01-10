@@ -84,6 +84,7 @@ export default function ProductsManagementPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<ProductFormData>(
@@ -93,46 +94,46 @@ export default function ProductsManagementPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchInventoryData = async (signal?: AbortSignal) => {
+  const PAGE_LIMIT = 20; // Assumed default limit
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("/api/inventory/categories", {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Failed to load categories");
+      const data = await response.json();
+      setCategories(extractList<Category>(data, "categories"));
+    } catch (err) {
+      console.error("Failed to load categories:", err);
+    }
+  };
+
+  const fetchProducts = async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
 
     try {
-      const [productsResponse, categoriesResponse] = await Promise.all([
-        fetch("/api/inventory/products", {
-          cache: "no-store",
-          signal,
-        }),
-        fetch("/api/inventory/categories", {
-          cache: "no-store",
-          signal,
-        }),
-      ]);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        query: searchTerm,
+      });
 
-      if (!productsResponse.ok) {
-        throw new Error(
-          `Failed to load products (status ${productsResponse.status}).`
-        );
+      const response = await fetch(`/api/inventory/products?${params.toString()}`, {
+        cache: "no-store",
+        signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load products (status ${response.status}).`);
       }
 
-      if (!categoriesResponse.ok) {
-        throw new Error(
-          `Failed to load categories (status ${categoriesResponse.status}).`
-        );
-      }
-
-      const [productsData, categoriesData] = await Promise.all([
-        productsResponse.json(),
-        categoriesResponse.json(),
-      ]);
-
-      setProducts(extractList<Product>(productsData, "products"));
-      setCategories(extractList<Category>(categoriesData, "categories"));
+      const data = await response.json();
+      setProducts(extractList<Product>(data, "products"));
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         return;
       }
-
       setError(
         err instanceof Error ? err.message : "Failed to load inventory data."
       );
@@ -141,12 +142,36 @@ export default function ProductsManagementPage() {
     }
   };
 
+  // Initial load for categories
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Debounced search and pagination for products
   useEffect(() => {
     const controller = new AbortController();
-    fetchInventoryData(controller.signal);
+    const timeoutId = setTimeout(() => {
+      fetchProducts(controller.signal);
+    }, 500);
 
-    return () => controller.abort();
-  }, []);
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [page, searchTerm]);
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+    setPage(1); // Reset to page 1 on new search
+  };
+
+  const handleNextPage = () => {
+    setPage((prev) => prev + 1);
+  };
+
+  const handlePrevPage = () => {
+    setPage((prev) => Math.max(prev - 1, 1));
+  };
 
   const resolveCategoryLabel = (product: Product): string => {
     if (product.category?.name) {
@@ -256,7 +281,7 @@ export default function ProductsManagementPage() {
         );
       }
 
-      await fetchInventoryData();
+      await fetchProducts();
       closeModal();
     } catch (err) {
       setFormError(
@@ -288,29 +313,13 @@ export default function ProductsManagementPage() {
         throw new Error(`Failed to delete product (status ${response.status}).`);
       }
 
-      await fetchInventoryData();
+      await fetchProducts();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to delete product."
       );
     }
   };
-
-  const normalizedSearch = searchTerm.trim().toLowerCase();
-  const filteredProducts = normalizedSearch
-    ? products.filter((product) => {
-        const categoryLabel = resolveCategoryLabel(product).toLowerCase();
-        const nameMatch = product.name
-          .toLowerCase()
-          .includes(normalizedSearch);
-        const barcodeMatch = product.barcode
-          .toLowerCase()
-          .includes(normalizedSearch);
-        const categoryMatch = categoryLabel.includes(normalizedSearch);
-
-        return nameMatch || barcodeMatch || categoryMatch;
-      })
-    : products;
 
   return (
     <div className="space-y-6">
@@ -326,7 +335,7 @@ export default function ProductsManagementPage() {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={handleSearchChange}
               placeholder="Search products..."
               className="pl-9"
             />
@@ -367,16 +376,7 @@ export default function ProductsManagementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-6 text-center text-sm text-slate-500"
-                    >
-                      Loading products...
-                    </td>
-                  </tr>
-                ) : filteredProducts.length === 0 ? (
+                {products.length === 0 && !loading ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -386,7 +386,7 @@ export default function ProductsManagementPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredProducts.map((product) => {
+                  products.map((product) => {
                     const isLowStock =
                       product.stock_quantity <= product.reorder_level;
                     const unitLabel = product.unit || "pcs";
@@ -450,6 +450,30 @@ export default function ProductsManagementPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-4">
+            <span className="text-sm text-slate-500">
+              Page {page}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={page === 1 || loading}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={products.length < PAGE_LIMIT || loading}
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
