@@ -73,6 +73,9 @@ export default function CreatePurchaseOrderPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
+  const [expectedDate, setExpectedDate] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("unpaid");
+  const [notes, setNotes] = useState("");
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [currentItem, setCurrentItem] = useState<CurrentItem>(
     DEFAULT_CURRENT_ITEM
@@ -255,6 +258,9 @@ export default function CreatePurchaseOrderPage() {
     const payload = {
       supplier_id: selectedSupplier,
       reference_number: referenceNumber.trim() || null,
+      expected_date: expectedDate || null,
+      payment_status: paymentStatus,
+      notes: notes.trim() || null,
       items: orderItems.map((item) => ({
         product_id: item.product_id,
         quantity: item.quantity,
@@ -360,6 +366,43 @@ export default function CreatePurchaseOrderPage() {
                 value={referenceNumber}
                 onChange={(event) => setReferenceNumber(event.target.value)}
                 placeholder="Quote or pro-forma # (optional)"
+                disabled={loading || isSubmitting}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                Expected Date
+              </label>
+              <Input
+                type="date"
+                value={expectedDate}
+                onChange={(event) => setExpectedDate(event.target.value)}
+                disabled={loading || isSubmitting}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                Payment Status
+              </label>
+              <select
+                value={paymentStatus}
+                onChange={(event) => setPaymentStatus(event.target.value)}
+                disabled={loading || isSubmitting}
+                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              >
+                <option value="unpaid">Unpaid</option>
+                <option value="partial">Partial</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
+            <div className="col-span-full space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                Notes
+              </label>
+              <Input
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="Additional notes..."
                 disabled={loading || isSubmitting}
               />
             </div>

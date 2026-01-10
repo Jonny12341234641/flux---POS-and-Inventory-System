@@ -26,6 +26,9 @@ interface Order {
   id: string;
   reference_number?: string;
   status: "pending" | "received" | "cancelled";
+  payment_status: "paid" | "unpaid" | "partial";
+  expected_date?: string;
+  notes?: string;
   created_at: string;
   supplier: {
     name: string;
@@ -217,10 +220,9 @@ export default function OrderDetailsPage() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/orders/${order.id}`, {
-        method: "PUT",
+      const response = await fetch(`/api/orders/${order.id}/receive`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "received" }),
       });
 
       if (!response.ok) {
@@ -324,6 +326,18 @@ export default function OrderDetailsPage() {
           >
             {statusLabel}
           </span>
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+              order?.payment_status === "paid"
+                ? "bg-green-100 text-green-800"
+                : "bg-yellow-100 text-yellow-800"
+            }`}
+          >
+            {order?.payment_status
+              ? order.payment_status.charAt(0).toUpperCase() +
+                order.payment_status.slice(1)
+              : "Unknown"}
+          </span>
           <Button
             type="button"
             variant="outline"
@@ -416,6 +430,23 @@ export default function OrderDetailsPage() {
                     {orderDate}
                   </span>
                 </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="flex items-center gap-2 text-slate-500">
+                    <Calendar className="h-4 w-4" />
+                    Expected
+                  </span>
+                  <span className="font-medium text-slate-900">
+                    {order.expected_date ? formatDate(order.expected_date) : "-"}
+                  </span>
+                </div>
+                {order.notes && (
+                  <div className="flex flex-col gap-1 pt-2">
+                    <span className="text-xs font-semibold text-slate-500">
+                      Notes
+                    </span>
+                    <p className="text-sm text-slate-700">{order.notes}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

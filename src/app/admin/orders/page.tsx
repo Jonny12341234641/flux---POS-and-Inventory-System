@@ -12,6 +12,7 @@ interface Order {
   supplier: { name: string };
   total_amount: number;
   status: "pending" | "received" | "cancelled";
+  payment_status: "paid" | "unpaid" | "partial";
   created_at: string;
 }
 
@@ -29,6 +30,18 @@ const getStatusColor = (status: Order["status"]) => {
       return "bg-green-100 text-green-800";
     case "cancelled":
       return "bg-red-100 text-red-800";
+    default:
+      return "bg-slate-100 text-slate-700";
+  }
+};
+
+const getPaymentStatusColor = (status: Order["payment_status"]) => {
+  switch (status) {
+    case "paid":
+      return "bg-green-100 text-green-800";
+    case "unpaid":
+    case "partial":
+      return "bg-yellow-100 text-yellow-800";
     default:
       return "bg-slate-100 text-slate-700";
   }
@@ -190,6 +203,7 @@ export default function PurchaseOrdersPage() {
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Total</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Payment</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -197,7 +211,7 @@ export default function PurchaseOrdersPage() {
             {loading ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-6 text-center text-sm text-slate-500"
                 >
                   Loading orders...
@@ -206,7 +220,7 @@ export default function PurchaseOrdersPage() {
             ) : filteredOrders.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-4 py-6 text-center text-sm text-slate-500"
                 >
                   {emptyMessage}
@@ -246,6 +260,18 @@ export default function PurchaseOrdersPage() {
                         )}`}
                       >
                         {formatStatus(order.status)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getPaymentStatusColor(
+                          order.payment_status
+                        )}`}
+                      >
+                        {order.payment_status
+                          ? order.payment_status.charAt(0).toUpperCase() +
+                            order.payment_status.slice(1)
+                          : "-"}
                       </span>
                     </td>
                     <td className="px-4 py-4">
