@@ -6,32 +6,32 @@ import { Edit, Mail, Phone, Plus, Search, Trash, Users } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Card, CardContent } from "../../../components/ui/card";
-
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  email?: string;
-  address?: string;
-  tax_id?: string;
-  loyalty_points: number;
-  created_at: string;
-}
+import type { Customer } from "../../../types/index";
 
 interface CustomerFormData {
   name: string;
   phone: string;
   email: string;
-  address: string;
+  address_street: string;
+  address_city: string;
+  address_state: string;
+  address_zip: string;
   tax_id: string;
+  store_credit: number;
+  tier_id: string;
 }
 
 const createDefaultFormData = (): CustomerFormData => ({
   name: "",
   phone: "",
   email: "",
-  address: "",
+  address_street: "",
+  address_city: "",
+  address_state: "",
+  address_zip: "",
   tax_id: "",
+  store_credit: 0,
+  tier_id: "",
 });
 
 const formatDate = (value: string) => {
@@ -156,8 +156,13 @@ export default function CustomersManagementPage() {
       name: customer.name ?? "",
       phone: customer.phone ?? "",
       email: customer.email ?? "",
-      address: customer.address ?? "",
+      address_street: customer.address_street ?? "",
+      address_city: customer.address_city ?? "",
+      address_state: customer.address_state ?? "",
+      address_zip: customer.address_zip ?? "",
       tax_id: customer.tax_id ?? "",
+      store_credit: customer.store_credit ?? 0,
+      tier_id: customer.tier_id ?? "",
     });
     setFormError(null);
     setIsModalOpen(true);
@@ -188,8 +193,13 @@ export default function CustomersManagementPage() {
       name: trimmedName,
       phone: trimmedPhone,
       email: formData.email.trim() || null,
-      address: formData.address.trim() || null,
+      address_street: formData.address_street.trim() || null,
+      address_city: formData.address_city.trim() || null,
+      address_state: formData.address_state.trim() || null,
+      address_zip: formData.address_zip.trim() || null,
       tax_id: formData.tax_id.trim() || null,
+      store_credit: Number(formData.store_credit),
+      tier_id: formData.tier_id.trim() || null,
     };
 
     try {
@@ -316,6 +326,7 @@ export default function CustomersManagementPage() {
                   <th className="px-4 py-3">Phone</th>
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Points</th>
+                  <th className="px-4 py-3">Credit</th>
                   <th className="px-4 py-3">Joined</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -324,7 +335,7 @@ export default function CustomersManagementPage() {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-4 py-6 text-center text-sm text-slate-500"
                     >
                       Loading customers...
@@ -333,7 +344,7 @@ export default function CustomersManagementPage() {
                 ) : customers.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-4 py-6 text-center text-sm text-slate-500"
                     >
                       No customers found.
@@ -364,6 +375,11 @@ export default function CustomersManagementPage() {
                       <td className="px-4 py-4">
                         <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                           {customer.loyalty_points ?? 0} pts
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                         <span className="font-medium text-slate-700">
+                          ${(customer.store_credit ?? 0).toFixed(2)}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-slate-600">
@@ -404,7 +420,7 @@ export default function CustomersManagementPage() {
 
       {isModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-lg">
+          <div className="w-full max-w-2xl rounded-lg bg-white shadow-lg overflow-y-auto max-h-[90vh]">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-900">
                 {currentCustomer ? "Edit Customer" : "Add Customer"}
@@ -419,6 +435,7 @@ export default function CustomersManagementPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 p-6">
+              {/* Basic Info */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
@@ -452,6 +469,7 @@ export default function CustomersManagementPage() {
                 </div>
               </div>
 
+              {/* Email & Tax */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">
@@ -486,21 +504,106 @@ export default function CustomersManagementPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
-                  Address
-                </label>
-                <textarea
-                  value={formData.address}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      address: event.target.value,
-                    }))
-                  }
-                  placeholder="Address (optional)"
-                  className="min-h-[96px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
-                />
+              {/* Credit & Tier */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">
+                    Store Credit ($)
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.store_credit}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        store_credit: parseFloat(event.target.value) || 0,
+                      }))
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">
+                    Tier ID
+                  </label>
+                  <Input
+                    value={formData.tier_id}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        tier_id: event.target.value,
+                      }))
+                    }
+                    placeholder="Tier ID (optional)"
+                  />
+                </div>
+              </div>
+
+              {/* Address Section */}
+              <div className="rounded-md border border-slate-100 bg-slate-50 p-4">
+                <h3 className="mb-3 text-sm font-medium text-slate-900">Address</h3>
+                <div className="grid gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-500">Street</label>
+                    <Input
+                      value={formData.address_street}
+                      onChange={(event) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          address_street: event.target.value,
+                        }))
+                      }
+                      placeholder="Street Address"
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500">City</label>
+                      <Input
+                        value={formData.address_city}
+                        onChange={(event) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            address_city: event.target.value,
+                          }))
+                        }
+                        placeholder="City"
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-500">State</label>
+                      <Input
+                        value={formData.address_state}
+                        onChange={(event) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            address_state: event.target.value,
+                          }))
+                        }
+                        placeholder="State"
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="col-span-2 sm:col-span-1 space-y-1">
+                      <label className="text-xs font-medium text-slate-500">Zip Code</label>
+                      <Input
+                        value={formData.address_zip}
+                        onChange={(event) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            address_zip: event.target.value,
+                          }))
+                        }
+                        placeholder="Zip"
+                        className="bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {formError ? (
