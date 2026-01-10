@@ -22,7 +22,10 @@ interface SystemSettings {
   storeName: string;
   storeAddress: string;
   storePhone: string;
+  storeEmail: string;
+  receiptHeader: string;
   receiptFooter: string;
+  logoUrl: string;
   taxRate: number;
   currency: string;
   lowStockThreshold: number;
@@ -32,7 +35,10 @@ const DEFAULT_SETTINGS: SystemSettings = {
   storeName: "Flux Store",
   storeAddress: "123 Galle Road, Colombo",
   storePhone: "+94 11 234 5678",
+  storeEmail: "",
+  receiptHeader: "",
   receiptFooter: "No refunds after 7 days",
+  logoUrl: "",
   taxRate: 2.5,
   currency: "LKR",
   lowStockThreshold: 10,
@@ -92,9 +98,21 @@ export default function SettingsPage() {
           payload.storePhone ?? payload.store_phone,
           DEFAULT_SETTINGS.storePhone
         ),
+        storeEmail: stringFrom(
+          payload.storeEmail ?? payload.store_email,
+          DEFAULT_SETTINGS.storeEmail
+        ),
+        receiptHeader: stringFrom(
+          payload.receiptHeader ?? payload.receipt_header,
+          DEFAULT_SETTINGS.receiptHeader
+        ),
         receiptFooter: stringFrom(
           payload.receiptFooter ?? payload.receipt_footer,
           DEFAULT_SETTINGS.receiptFooter
+        ),
+        logoUrl: stringFrom(
+          payload.logoUrl ?? payload.logo_url,
+          DEFAULT_SETTINGS.logoUrl
         ),
         taxRate: numberFrom(
           payload.taxRate ?? payload.default_tax_rate,
@@ -148,7 +166,10 @@ export default function SettingsPage() {
       store_name: settings.storeName.trim(),
       store_address: settings.storeAddress.trim(),
       store_phone: settings.storePhone.trim(),
+      store_email: settings.storeEmail.trim(),
+      receipt_header: settings.receiptHeader.trim(),
       receipt_footer: settings.receiptFooter.trim(),
+      logo_url: settings.logoUrl.trim(),
       default_tax_rate: settings.taxRate,
       currency_symbol: settings.currency.trim(),
       low_stock_threshold: settings.lowStockThreshold,
@@ -247,6 +268,38 @@ export default function SettingsPage() {
 
             <div className="space-y-2">
               <label
+                htmlFor="store-email"
+                className="text-sm font-medium text-slate-700"
+              >
+                Store Email
+              </label>
+              <Input
+                id="store-email"
+                type="email"
+                value={settings.storeEmail}
+                onChange={(event) => updateSetting("storeEmail", event.target.value)}
+                placeholder="store@example.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="logo-url"
+                className="text-sm font-medium text-slate-700"
+              >
+                Logo URL
+              </label>
+              <Input
+                id="logo-url"
+                type="text"
+                value={settings.logoUrl}
+                onChange={(event) => updateSetting("logoUrl", event.target.value)}
+                placeholder="https://example.com/logo.png"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label
                 htmlFor="store-address"
                 className="text-sm font-medium text-slate-700"
               >
@@ -268,13 +321,31 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
               <Receipt className="h-4 w-4 text-slate-500" />
-              Receipt Footer
+              Receipt Customization
             </CardTitle>
             <CardDescription>
               Return policy or Thank You message.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+             <div className="space-y-2">
+              <label
+                htmlFor="receipt-header"
+                className="text-sm font-medium text-slate-700"
+              >
+                Receipt Header Message
+              </label>
+              <Textarea
+                id="receipt-header"
+                value={settings.receiptHeader}
+                onChange={(event) =>
+                  updateSetting("receiptHeader", event.target.value)
+                }
+                placeholder="Welcome to our store!"
+                className="min-h-[80px]"
+              />
+            </div>
+
             <div className="space-y-2">
               <label
                 htmlFor="receipt-footer"
@@ -333,6 +404,7 @@ export default function SettingsPage() {
                   id="tax-rate"
                   type="number"
                   min="0"
+                  max="100"
                   step="0.01"
                   value={settings.taxRate}
                   onChange={handleNumberChange("taxRate")}
