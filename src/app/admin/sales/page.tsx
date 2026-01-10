@@ -10,11 +10,11 @@ import { Input } from "../../../components/ui/input";
 interface Sale {
   id: string;
   receipt_number: string;
-  total_amount: number;
-  payment_method: "cash" | "card" | "bank_transfer";
+  grand_total: number;
+  payment_method: "cash" | "card" | "bank_transfer" | "split" | "loyalty";
   status: "completed" | "refunded";
   created_at: string;
-  cashier: { name: string };
+  cashier: { full_name: string };
 }
 
 interface BadgeProps {
@@ -62,6 +62,8 @@ const paymentStyles: Record<
     label: "Transfer",
     className: "bg-purple-100 text-purple-700",
   },
+  split: { label: "Split", className: "bg-orange-100 text-orange-700" },
+  loyalty: { label: "Loyalty", className: "bg-indigo-100 text-indigo-700" },
 };
 
 const extractSales = (data: unknown): Sale[] => {
@@ -221,11 +223,11 @@ export default function SalesHistoryPage() {
               filteredSales.map((sale) => {
                 const paymentStyle = paymentStyles[sale.payment_method];
                 const isRefunded = sale.status === "refunded";
-                const cashierName = sale.cashier?.name ?? "Unknown cashier";
+                const cashierName = sale.cashier?.full_name ?? "Unknown cashier";
                 const receiptLabel =
                   sale.receipt_number?.trim() || sale.id || "-";
-                const totalAmount = Number.isFinite(sale.total_amount)
-                  ? sale.total_amount
+                const totalAmount = Number.isFinite(sale.grand_total)
+                  ? sale.grand_total
                   : 0;
 
                 return (

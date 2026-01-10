@@ -16,6 +16,7 @@ export default function POSPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
 
   // --- 1. FETCH PRODUCTS FROM API ---
   const fetchProducts = async (signal?: AbortSignal) => {
@@ -94,7 +95,8 @@ export default function POSPage() {
           quantity: item.quantity,
           unit_price: item.price
         })),
-        payment_method: 'cash', // Defaulting to cash for now
+        payment_method: paymentMethod,
+        amount_paid: grandTotal,
       };
 
       const res = await fetch('/api/sales', {
@@ -220,6 +222,30 @@ export default function POSPage() {
 
         {/* Totals Section */}
         <div className="p-6 bg-gray-50 border-t">
+          {/* Payment Method Selector */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setPaymentMethod('cash')}
+              className={`flex-1 py-2 rounded-lg font-semibold border transition ${
+                paymentMethod === 'cash'
+                  ? 'bg-emerald-100 border-emerald-500 text-emerald-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Cash
+            </button>
+            <button
+              onClick={() => setPaymentMethod('card')}
+              className={`flex-1 py-2 rounded-lg font-semibold border transition ${
+                paymentMethod === 'card'
+                  ? 'bg-blue-100 border-blue-500 text-blue-700'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Card
+            </button>
+          </div>
+
           <div className="flex justify-between mb-2">
             <span className="text-gray-600">Subtotal</span>
             <span>${subTotal.toFixed(2)}</span>
