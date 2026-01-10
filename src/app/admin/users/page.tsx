@@ -9,14 +9,15 @@ import { Input } from "../../../components/ui/input";
 
 interface User {
   id: string;
-  name: string;
-  email: string;
+  username: string;
+  full_name: string;
   role: "admin" | "cashier";
+  status: "active" | "inactive";
   created_at: string;
 }
 
 interface UserFormData {
-  name: string;
+  full_name: string;
   email: string;
   password: string;
   role: User["role"] | "";
@@ -29,7 +30,7 @@ interface RoleConfig {
 }
 
 const DEFAULT_FORM_DATA: UserFormData = {
-  name: "",
+  full_name: "",
   email: "",
   password: "",
   role: "",
@@ -69,27 +70,21 @@ const extractUsers = (data: unknown): User[] => {
     list = data;
   } else if (data && typeof data === "object") {
     const record = data as Record<string, unknown>;
-    const directList =
-      (Array.isArray(record.data) && record.data) ||
-      (Array.isArray(record.users) && record.users);
-
-    if (Array.isArray(directList)) {
-      list = directList;
-    } else if (record.data && typeof record.data === "object") {
-      const nested = record.data as Record<string, unknown>;
-      const nestedList =
-        (Array.isArray(nested.data) && nested.data) ||
-        (Array.isArray(nested.users) && nested.users);
-
-      if (Array.isArray(nestedList)) {
-        list = nestedList;
-      }
+    // Check for standard standardized response { success: true, data: [...] }
+    if (Array.isArray(record.data)) {
+      list = record.data;
+    } else if (Array.isArray(record.users)) {
+      list = record.users;
     }
   }
 
   return list.map((user) => ({
-    ...user,
-    name: user.full_name || user.name || "",
+    id: user.id,
+    username: user.username || "",
+    full_name: user.full_name || user.name || "", // Fallback if API varies
+    role: user.role,
+    status: user.status || "active", // Default to active if missing
+    created_at: user.created_at,
   })) as User[];
 };
 
@@ -104,6 +99,21 @@ const RoleBadge = ({ role }: { role: User["role"] }) => {
     >
       <Icon className="h-3.5 w-3.5" />
       {config.label}
+    </span>
+  );
+};
+
+const StatusBadge = ({ status }: { status: User["status"] }) => {
+  const isActive = status === "active";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+        isActive
+          ? "bg-green-100 text-green-800"
+          : "bg-red-100 text-red-800"
+      }`}
+    >
+      {isActive ? "Active" : "Inactive"}
     </span>
   );
 };
@@ -126,7 +136,8 @@ export default function UsersPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to load users (status ${response.status}).`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to load users (status ${response.status}).`);
       }
 
       const data = await response.json();
@@ -185,8 +196,8 @@ export default function UsersPage() {
   const openEditModal = (user: User) => {
     setCurrentUser(user);
     setFormData({
-      name: user.name ?? "",
-      email: user.email ?? "",
+      full_name: user.full_name,
+      email: "", // Email is not returned in list, and not editable here usually
       password: "",
       role: user.role,
     });
@@ -212,16 +223,11 @@ export default function UsersPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const trimmedName = formData.name.trim();
+    const trimmedName = formData.full_name.trim();
     const trimmedEmail = formData.email.trim();
 
     if (!trimmedName) {
-      window.alert("Name is required.");
-      return;
-    }
-
-    if (!trimmedEmail) {
-      window.alert("Email is required.");
+      window.alert("Full Name is required.");
       return;
     }
 
@@ -232,9 +238,21 @@ export default function UsersPage() {
 
     const isCreate = !currentUser;
 
-    if (isCreate && !formData.password.trim()) {
-      window.alert("Password is required for new accounts.");
-      return;
+    if (isCreate) {
+      if (!trimmedEmail) {
+        window.alert("Email is required.");
+        return;
+      }
+      if (!formData.password.trim()) {
+        window.alert("Password is required for new accounts.");
+        return;
+      }
+      
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+      if (!passwordRegex.test(formData.password)) {
+        window.alert("Password must be at least 8 characters and include uppercase, lowercase, and a number.");
+        return;
+      }
     }
 
     const endpoint = isCreate
@@ -244,13 +262,13 @@ export default function UsersPage() {
 
     const payload = isCreate
       ? {
-          name: trimmedName,
+          full_name: trimmedName,
           email: trimmedEmail,
           role: formData.role,
           password: formData.password,
         }
       : {
-          name: trimmedName,
+          full_name: trimmedName,
           role: formData.role,
         };
 
@@ -264,9 +282,8 @@ export default function UsersPage() {
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Failed to ${isCreate ? "create" : "update"} user account.`
-        );
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to ${isCreate ? "create" : "update"} user account.`);
       }
 
       await fetchUsers();
@@ -285,7 +302,7 @@ export default function UsersPage() {
     }
 
     const confirmed = window.confirm(
-      `Remove access for ${user.name}? This will delete their account.`
+      `Remove access for ${user.full_name}? This will deactivate their account.`
     );
 
     if (!confirmed) {
@@ -298,7 +315,8 @@ export default function UsersPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to remove employee access.");
+         const errorData = await response.json();
+         throw new Error(errorData.error || "Failed to remove employee access.");
       }
 
       await fetchUsers();
@@ -336,6 +354,7 @@ export default function UsersPage() {
                 <tr>
                   <th className="px-4 py-3">Employee</th>
                   <th className="px-4 py-3">Role</th>
+                  <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Joined</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -344,7 +363,7 @@ export default function UsersPage() {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="px-4 py-10 text-center text-sm text-slate-500"
                     >
                       Loading team members...
@@ -353,7 +372,7 @@ export default function UsersPage() {
                 ) : users.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="px-4 py-10 text-center text-sm text-slate-500"
                     >
                       No employees found.
@@ -365,15 +384,18 @@ export default function UsersPage() {
                       <td className="px-4 py-4">
                         <div className="flex flex-col">
                           <span className="font-semibold text-slate-900">
-                            {user.name}
+                            {user.full_name}
                           </span>
                           <span className="text-xs text-slate-500">
-                            {user.email}
+                            @{user.username}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-4">
                         <RoleBadge role={user.role} />
+                      </td>
+                      <td className="px-4 py-4">
+                        <StatusBadge status={user.status} />
                       </td>
                       <td className="px-4 py-4 text-slate-600">
                         {formatJoinDate(user.created_at)}
@@ -390,16 +412,18 @@ export default function UsersPage() {
                             <Edit className="h-4 w-4" />
                             Edit
                           </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDelete(user)}
-                            className="inline-flex items-center gap-2 text-red-600"
-                          >
-                            <Trash className="h-4 w-4" />
-                            Delete
-                          </Button>
+                          {user.status === "active" && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDelete(user)}
+                              className="inline-flex items-center gap-2 text-red-600"
+                            >
+                              <Trash className="h-4 w-4" />
+                              Deactivate
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -437,8 +461,8 @@ export default function UsersPage() {
                     </label>
                     <Input
                       id="user-name"
-                      name="name"
-                      value={formData.name}
+                      name="full_name"
+                      value={formData.full_name}
                       onChange={handleInputChange}
                       placeholder="Alex Johnson"
                       required
@@ -462,6 +486,11 @@ export default function UsersPage() {
                       required
                       disabled={Boolean(currentUser)}
                     />
+                    {currentUser && (
+                      <p className="text-xs text-slate-500">
+                        Email cannot be changed.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
