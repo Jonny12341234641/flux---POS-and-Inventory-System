@@ -13,30 +13,14 @@ import {
   CardFooter,
 } from "../../../../components/ui/card";
 import { APP_NAME } from "../../../../lib/constants";
-
-interface SaleItem {
-  id: string;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-  total: number;
-}
-
-interface Sale {
-  id: string;
-  receipt_number: string;
-  created_at: string;
-  payment_method: string;
-  total_amount: number;
-  amount_paid: number;
-  change_given: number;
-  status: "completed" | "refunded";
-  cashier: { name: string };
-  items: SaleItem[];
-}
+import type { SaleWithDetails as Sale, SaleItem } from "../../../../types/index";
 
 type ParamsShape = { id?: string | string[] };
 type ReactUse = <T>(value: Promise<T>) => T;
+type SaleItemWithProduct = SaleItem & {
+  product_name?: string | null;
+  total?: number | null;
+};
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -100,32 +84,83 @@ const extractSale = (data: unknown): Sale | null => {
     return null;
   }
 
-  const items = Array.isArray(candidate.items) ? candidate.items : [];
-  const cashier =
+  const candidateRecord = candidate as Record<string, unknown>;
+  const rawItems = Array.isArray(candidateRecord.items)
+    ? candidateRecord.items
+    : Array.isArray(candidate.sale_items)
+      ? candidate.sale_items
+      : [];
+  const cashierRecord =
     candidate.cashier && typeof candidate.cashier === "object"
-      ? (candidate.cashier as { name?: string })
+      ? (candidate.cashier as { full_name?: string | null; name?: string | null })
       : null;
+  const cashierName = (cashierRecord?.full_name ?? cashierRecord?.name ?? "").trim();
+  const normalizedItems = rawItems.map((item) => {
+    const itemRecord = item as Record<string, unknown>;
+    const quantityValue = Number(itemRecord.quantity);
+    const quantity = Number.isFinite(quantityValue) ? quantityValue : 0;
+    const unitPriceValue = Number(itemRecord.unit_price);
+    const unitPrice = Number.isFinite(unitPriceValue) ? unitPriceValue : 0;
+    const subTotalValue = Number(itemRecord.sub_total);
+    const totalValue = Number(itemRecord.total);
+    const computedTotal = quantity * unitPrice;
+    const subTotal = Number.isFinite(subTotalValue)
+      ? subTotalValue
+      : Number.isFinite(totalValue)
+        ? totalValue
+        : computedTotal;
+    const total = Number.isFinite(totalValue) ? totalValue : subTotal;
+    const discountValue = Number(itemRecord.discount);
+    const taxValue = Number(itemRecord.tax_amount);
+    const product =
+      itemRecord.product && typeof itemRecord.product === "object"
+        ? (itemRecord.product as { name?: unknown })
+        : null;
+    const productName =
+      typeof itemRecord.product_name === "string"
+        ? itemRecord.product_name
+        : typeof product?.name === "string"
+          ? product.name
+          : undefined;
+
+    return {
+      id: typeof itemRecord.id === "string" ? itemRecord.id : `${itemRecord.id ?? ""}`,
+      sale_id:
+        typeof itemRecord.sale_id === "string"
+          ? itemRecord.sale_id
+          : candidate.id,
+      product_id:
+        typeof itemRecord.product_id === "string"
+          ? itemRecord.product_id
+          : "",
+      quantity,
+      unit_price: unitPrice,
+      sub_total: subTotal,
+      discount: Number.isFinite(discountValue) ? discountValue : 0,
+      tax_amount: Number.isFinite(taxValue) ? taxValue : 0,
+      ...(typeof itemRecord.note === "string" && itemRecord.note.trim()
+        ? { note: itemRecord.note }
+        : {}),
+      ...(productName ? { product_name: productName } : {}),
+      total,
+    } as SaleItemWithProduct;
+  });
 
   return {
     ...candidate,
-    cashier: { name: cashier?.name?.trim() || "Unknown cashier" },
-    items: items.map((item) => ({
-      ...item,
-      total:
-        Number.isFinite(item.total) && item.total !== 0
-          ? item.total
-          : (item.quantity ?? 0) * (item.unit_price ?? 0),
-    })),
+    ...(cashierName ? { cashier: { full_name: cashierName } } : {}),
+    sale_items: normalizedItems,
   };
 };
 
-const resolveLineTotal = (item: SaleItem) => {
+const resolveLineTotal = (item: SaleItemWithProduct) => {
   const quantity = Number.isFinite(item.quantity) ? item.quantity : 0;
   const unitPrice = Number.isFinite(item.unit_price) ? item.unit_price : 0;
   const computed = quantity * unitPrice;
 
-  if (Number.isFinite(item.total) && item.total !== 0) {
-    return item.total;
+  const totalValue = Number.isFinite(item.total) ? item.total : item.sub_total;
+  if (Number.isFinite(totalValue) && totalValue !== 0) {
+    return totalValue;
   }
 
   return computed;
@@ -254,12 +289,12 @@ export default function SaleDetailsPage() {
     }
   };
 
-  const items = sale?.items ?? [];
+  const items = (sale?.sale_items ?? []) as SaleItemWithProduct[];
   const subtotal = items.reduce(
     (sum, item) => sum + resolveLineTotal(item),
     0
   );
-  const totalAmountValue = sale?.total_amount ?? Number.NaN;
+  const totalAmountValue = sale?.grand_total ?? Number.NaN;
   const totalAmount = Number.isFinite(totalAmountValue)
     ? totalAmountValue
     : subtotal;
@@ -274,7 +309,7 @@ export default function SaleDetailsPage() {
     : 0;
   const receiptNumber = sale?.receipt_number?.trim() || sale?.id || "-";
   const saleDate = sale?.created_at ? formatDateTime(sale.created_at) : "-";
-  const cashierName = sale?.cashier?.name?.trim() || "Unknown cashier";
+  const cashierName = sale?.cashier?.full_name?.trim() || "Unknown cashier";
   const paymentMethod = formatPaymentMethod(sale?.payment_method);
   const isRefunded = sale?.status === "refunded";
 
@@ -384,7 +419,7 @@ export default function SaleDetailsPage() {
                       return (
                         <tr key={item.id}>
                           <td className="px-4 py-3 font-medium text-slate-900">
-                            {item.product_name}
+                            {item.product_name?.trim() || item.product_id || "Item"}
                           </td>
                           <td className="px-4 py-3 text-center text-slate-600">
                             {item.quantity}

@@ -1,12 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { TABLES } from '../../lib/constants';
-import type { Supplier, PaginatedResponse } from '../../types';
-
-type ControllerResult<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
+import type { ActionResponse, Supplier, PaginatedResponse } from '../../types';
 
 type SupplierInsert = {
   name: string;
@@ -113,7 +107,7 @@ export const getSuppliers = async (
   limit = 10,
   searchQuery?: string,
   onlyActive = true
-): Promise<ControllerResult<PaginatedResponse<Supplier>>> => {
+): Promise<ActionResponse<PaginatedResponse<Supplier>>> => {
   try {
     const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
     const safeLimit =
@@ -167,7 +161,7 @@ export const getSuppliers = async (
 
 export const getSupplierById = async (
   id: string
-): Promise<ControllerResult<Supplier>> => {
+): Promise<ActionResponse<Supplier>> => {
   try {
     const { data, error } = await supabase
       .from(TABLES.SUPPLIERS)
@@ -191,7 +185,7 @@ export const getSupplierById = async (
 export const createSupplier = async (
   data: SupplierInsert,
   userId: string
-): Promise<ControllerResult<Supplier>> => {
+): Promise<ActionResponse<Supplier>> => {
   try {
     const name = data.name?.trim();
 
@@ -248,7 +242,7 @@ export const updateSupplier = async (
   id: string,
   data: SupplierUpdate,
   userId: string
-): Promise<ControllerResult<Supplier>> => {
+): Promise<ActionResponse<Supplier>> => {
   try {
     if (!userId) {
       throw new Error('User ID is required');
@@ -302,7 +296,7 @@ export const updateSupplier = async (
 export const deleteSupplier = async (
   id: string,
   userId: string
-): Promise<ControllerResult<Supplier>> => {
+): Promise<ActionResponse<Supplier>> => {
   try {
     if (!userId) {
       throw new Error('User ID is required');
@@ -348,7 +342,7 @@ export const deleteSupplier = async (
 export const reactivateSupplier = async (
   id: string,
   userId: string
-): Promise<ControllerResult<Supplier>> => {
+): Promise<ActionResponse<Supplier>> => {
   try {
     if (!userId) {
       throw new Error('User ID is required');

@@ -39,8 +39,8 @@ export type Category = {
 export type Supplier = {
     id: string;
     name: string;
-    contact_person: string;
-    phone: string;
+    contact_person?: string;
+    phone?: string;
     email?: string;
     address?: string;
     tax_id?: string;
@@ -149,7 +149,7 @@ export type Sale = {
     
     // Payment Method
     // 'split' implies looking at the 'payments' relation for details
-    payment_method: 'cash' | 'card' | 'bank_transfer' | 'split'; 
+    payment_method: 'cash' | 'card' | 'bank_transfer' | 'split' | 'loyalty'; 
     amount_paid: number;
     change_given: number;
     

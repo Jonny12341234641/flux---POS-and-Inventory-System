@@ -6,15 +6,7 @@ import { Edit, Lock, Plus, Shield, Trash, User as UserIcon } from "lucide-react"
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
-
-interface User {
-  id: string;
-  username: string;
-  full_name: string;
-  role: "admin" | "cashier";
-  status: "active" | "inactive";
-  created_at: string;
-}
+import type { User } from "../../../../types/index";
 
 interface UserFormData {
   full_name: string;

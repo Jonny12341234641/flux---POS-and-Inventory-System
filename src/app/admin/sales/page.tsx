@@ -6,16 +6,7 @@ import { Eye, FileText, RefreshCw, Search } from "lucide-react";
 
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
-
-interface Sale {
-  id: string;
-  receipt_number: string;
-  grand_total: number;
-  payment_method: "cash" | "card" | "bank_transfer" | "split" | "loyalty";
-  status: "completed" | "refunded";
-  created_at: string;
-  cashier: { full_name: string };
-}
+import type { SaleWithDetails as Sale } from "../../../../types/index";
 
 interface BadgeProps {
   className?: string;

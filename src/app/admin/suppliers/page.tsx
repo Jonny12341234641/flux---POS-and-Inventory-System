@@ -25,22 +25,7 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
-
-interface Supplier {
-  id: string;
-  name: string;
-  contact_person?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  tax_id?: string;
-  is_active: boolean;
-  payment_terms?: string;
-  lead_time_days?: number;
-  moq?: number;
-  website?: string;
-  notes?: string;
-}
+import type { Supplier } from "../../../../types/index";
 
 interface SupplierFormData {
   name: string;
