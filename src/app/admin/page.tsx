@@ -98,18 +98,18 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Dashboard</h1>
+          <p className="text-sm text-zinc-500">
             Overview for {formattedDate}
           </p>
         </div>
         {loading ? (
-          <p className="text-sm text-slate-400">Loading dashboard...</p>
+          <p className="text-sm text-zinc-400">Loading dashboard...</p>
         ) : null}
       </header>
 
       {error ? (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 bg-red-50/50">
           <CardHeader>
             <CardTitle className="text-sm font-semibold text-red-700">
               Unable to load dashboard data
@@ -147,12 +147,12 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <Package className="h-4 w-4 text-zinc-400" />
               Low Stock Alerts
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-500">Loading alerts...</p>
+            <p className="text-sm text-zinc-500">Loading alerts...</p>
           </CardContent>
         </Card>
       ) : null}
@@ -161,33 +161,37 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <Package className="h-4 w-4 text-zinc-400" />
               Low Stock Alerts
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-1">
               {alerts.map((item) => (
                 <div
                   key={item.id}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-3"
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-lg p-3 transition-colors hover:bg-zinc-50"
                 >
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {item.name}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Current Stock: {item.stock_quantity} {item.unit} - Reorder
-                      Level: {item.reorder_level} {item.unit}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-zinc-900">
+                        {item.name}
+                      </p>
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                        Low Stock
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500">
+                      {item.stock_quantity} {item.unit} remaining &middot; Reorder at {item.reorder_level}
                     </p>
                   </div>
-                  <Button asChild>
+                  <Button asChild variant="outline" size="sm" className="h-8">
                     <Link
                       href="/admin/orders"
                       className="inline-flex items-center gap-2"
                     >
                       Restock
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-3 w-3" />
                     </Link>
                   </Button>
                 </div>

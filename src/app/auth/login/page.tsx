@@ -54,16 +54,23 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-surface-bg px-4">
-      <Card className="w-full max-w-md border-slate-200">
+    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-100 via-zinc-50 to-white px-4">
+      <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
-          <CardTitle>Welcome back</CardTitle>
-          <CardDescription>Sign in to continue to Flux POS.</CardDescription>
+          <CardTitle className="text-2xl font-bold tracking-tight text-zinc-900">
+            Welcome back
+          </CardTitle>
+          <CardDescription className="text-zinc-500">
+            Sign in to continue to Flux POS.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700" htmlFor="email">
+              <label
+                className="text-sm font-medium text-zinc-700"
+                htmlFor="email"
+              >
                 Email
               </label>
               <Input
@@ -78,7 +85,7 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <label
-                className="text-sm font-medium text-slate-700"
+                className="text-sm font-medium text-zinc-700"
                 htmlFor="password"
               >
                 Password

@@ -4,19 +4,19 @@
   This effectively replaces the tailwind.config.ts 'extend' section.
 */
 @theme {
-  /* Brand Colors */
-  --color-brand-light: #eff6ff;
-  --color-brand-DEFAULT: #2563eb;
-  --color-brand-dark: #1e40af;
+  /* Brand Colors - Indigo/Violet */
+  --color-brand-light: #e0e7ff;   /* Indigo 100 */
+  --color-brand-DEFAULT: #6366f1; /* Indigo 500 */
+  --color-brand-dark: #4f46e5;    /* Indigo 600 */
 
   /* Accent Colors */
   --color-accent-success: #10b981;
   --color-accent-danger: #ef4444;
   --color-accent-warning: #f59e0b;
 
-  /* Surface Colors */
+  /* Surface Colors - Zinc */
   --color-surface-card: #ffffff;
-  --color-surface-bg: #f8fafc;
+  --color-surface-bg: #fafafa; /* Zinc 50 */
 }
 
 @layer base {
@@ -24,20 +24,21 @@
     /* Now that we defined --color-surface-bg above, 
        Tailwind automatically creates the utility 'bg-surface-bg' 
     */
-    @apply bg-surface-bg text-gray-900 antialiased;
+    @apply bg-surface-bg text-zinc-900 antialiased;
   }
 
   /* Scrollbar Styling */
   ::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
+    @apply bg-zinc-300 rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
+    @apply bg-zinc-400;
   }
 }

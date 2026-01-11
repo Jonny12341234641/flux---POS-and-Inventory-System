@@ -22,20 +22,24 @@ export function StatsCard({
   className,
 }: StatsCardProps) {
   return (
-    <Card className={cn(className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <Skeleton className="h-4 w-[100px]" />
-        ) : (
-          <div className="text-2xl font-bold">{value}</div>
-        )}
-        {description ? (
-          <p className="text-xs text-muted-foreground">{description}</p>
-        ) : null}
+    <Card className={cn("transition-all hover:shadow-lg", className)}>
+      <CardContent className="flex items-center gap-4 p-6">
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-light text-brand-DEFAULT">
+          <Icon className="h-6 w-6" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-zinc-500">{title}</p>
+          {loading ? (
+            <Skeleton className="h-8 w-[100px]" />
+          ) : (
+            <h3 className="text-3xl font-bold tracking-tight text-zinc-900">
+              {value}
+            </h3>
+          )}
+          {description ? (
+            <p className="text-xs text-zinc-400">{description}</p>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   );
