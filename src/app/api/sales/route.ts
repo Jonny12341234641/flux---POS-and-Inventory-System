@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../utils/supabase/server';
-import { createSale, getSales } from '../../../lib/controllers/saleController';
+import {
+  createSale,
+  getSales,
+  saveDraft,
+} from '../../../lib/controllers/saleController';
 
 type SaleItemPayload = {
   product_id?: string;
@@ -18,6 +22,7 @@ type SalePayload = {
   amount_paid: number;
   discount_total?: number;
   customer_id?: string | null;
+  status?: 'draft' | 'completed';
   items?: SaleItemPayload[];
   payments?: {
     amount: number;
@@ -95,6 +100,7 @@ export async function POST(request: Request) {
       amount_paid,
       discount_total,
       customer_id,
+      status,
       items,
       payments,
       promo_code,
@@ -160,11 +166,18 @@ export async function POST(request: Request) {
       manager_id,
     };
 
-    const result = await createSale(
-      saleData,
-      normalizedItems as NormalizedSaleItem[],
-      user.id
-    );
+    const result =
+      status === 'draft'
+        ? await saveDraft(
+            saleData,
+            normalizedItems as NormalizedSaleItem[],
+            user.id
+          )
+        : await createSale(
+            saleData,
+            normalizedItems as NormalizedSaleItem[],
+            user.id
+          );
 
     if (!result.success || !result.data) {
       throw new Error(result.error ?? 'Failed to process sale');

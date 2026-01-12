@@ -277,6 +277,7 @@ export type CartItem = {
     product: Product; // Full product object for display
     quantity: number;
     discount?: number;
+    discount_percent?: number;
     tax_amount?: number;
 };
 
