@@ -24,20 +24,20 @@ export function StatsCard({
   return (
     <Card className={cn("transition-all hover:shadow-lg", className)}>
       <CardContent className="flex items-center gap-4 p-6">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-light text-brand-DEFAULT">
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-DEFAULT/15 text-brand-DEFAULT">
           <Icon className="h-6 w-6" />
         </div>
         <div className="space-y-1">
-          <p className="text-sm font-medium text-zinc-500">{title}</p>
+          <p className="text-sm font-medium text-zinc-400">{title}</p>
           {loading ? (
-            <Skeleton className="h-8 w-[100px]" />
+            <Skeleton className="h-8 w-[100px] bg-zinc-800" />
           ) : (
-            <h3 className="text-3xl font-bold tracking-tight text-zinc-900">
+            <h3 className="text-3xl font-bold tracking-tight text-zinc-50">
               {value}
             </h3>
           )}
           {description ? (
-            <p className="text-xs text-zinc-400">{description}</p>
+            <p className="text-xs text-zinc-500">{description}</p>
           ) : null}
         </div>
       </CardContent>

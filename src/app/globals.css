@@ -29,8 +29,8 @@
   --color-accent-warning: #f59e0b;
 
   /* Surface Colors - Zinc */
-  --color-surface-card: #ffffff;
-  --color-surface-bg: #fafafa; /* Zinc 50 */
+  --color-surface-card: #18181b;
+  --color-surface-bg: #09090b; /* Zinc 950 */
 }
 
 @layer base {
@@ -38,7 +38,7 @@
     /* Now that we defined --color-surface-bg above, 
        Tailwind automatically creates the utility 'bg-surface-bg' 
     */
-    @apply bg-surface-bg text-zinc-900 antialiased;
+    @apply bg-surface-bg text-zinc-50 antialiased;
   }
 
   /* Scrollbar Styling */

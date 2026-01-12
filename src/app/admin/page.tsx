@@ -98,8 +98,8 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Dashboard</h1>
-          <p className="text-sm text-zinc-500">
+          <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard</h1>
+          <p className="text-sm text-zinc-400">
             Overview for {formattedDate}
           </p>
         </div>
@@ -109,14 +109,14 @@ export default function AdminDashboardPage() {
       </header>
 
       {error ? (
-        <Card className="border-red-200 bg-red-50/50">
+        <Card className="border-red-500/20 bg-red-500/10">
           <CardHeader>
-            <CardTitle className="text-sm font-semibold text-red-700">
+            <CardTitle className="text-sm font-semibold text-red-400">
               Unable to load dashboard data
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-red-400/90">{error}</p>
           </CardContent>
         </Card>
       ) : null}
@@ -170,14 +170,14 @@ export default function AdminDashboardPage() {
               {alerts.map((item) => (
                 <div
                   key={item.id}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-lg p-3 transition-colors hover:bg-zinc-50"
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-lg p-3 transition-colors hover:bg-white/5"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-zinc-900">
+                      <p className="text-sm font-medium text-zinc-200">
                         {item.name}
                       </p>
-                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">
                         Low Stock
                       </span>
                     </div>

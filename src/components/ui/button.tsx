@@ -20,9 +20,9 @@ export const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
-          "border border-zinc-200 bg-white shadow-sm hover:bg-zinc-50 hover:text-zinc-900",
-        secondary: "bg-zinc-100 text-zinc-900 shadow-sm hover:bg-zinc-200",
-        ghost: "hover:bg-zinc-100 hover:text-zinc-900",
+          "border border-zinc-700 bg-transparent shadow-sm hover:bg-zinc-800 hover:text-zinc-50 text-zinc-200",
+        secondary: "bg-zinc-800 text-zinc-50 shadow-sm hover:bg-zinc-700",
+        ghost: "hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400",
         link: "text-brand-DEFAULT underline-offset-4 hover:underline",
       },
       size: {
