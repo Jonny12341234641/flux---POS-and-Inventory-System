@@ -4,6 +4,20 @@
   This effectively replaces the tailwind.config.ts 'extend' section.
 */
 @theme {
+  /* Typography */
+  --default-font-family: var(
+    --font-dm-sans,
+    "DM Sans",
+    "Google Sans",
+    ui-sans-serif,
+    system-ui,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji"
+  );
+
   /* Brand Colors - Indigo/Violet */
   --color-brand-light: #e0e7ff;   /* Indigo 100 */
   --color-brand-DEFAULT: #6366f1; /* Indigo 500 */
