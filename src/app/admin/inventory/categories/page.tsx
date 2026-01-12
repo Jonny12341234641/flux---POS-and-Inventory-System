@@ -6,6 +6,7 @@ import { Edit, Plus, Search, Trash } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
 import { Card, CardContent } from "../../../../components/ui/card";
+import { Modal } from "../../../../components/ui/modal";
 
 interface Category {
   id: string;
@@ -205,8 +206,8 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Categories</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-white">Categories</h1>
+          <p className="text-sm text-slate-400">
             Manage product categories and POS button colors.
           </p>
         </div>
@@ -238,14 +239,14 @@ export default function CategoriesPage() {
           </div>
 
           {error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
               {error}
             </div>
           ) : null}
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <table className="min-w-full divide-y divide-slate-800 text-sm">
+              <thead className="bg-slate-900/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-4 py-3">Color</th>
                   <th className="px-4 py-3">Name</th>
@@ -253,7 +254,7 @@ export default function CategoriesPage() {
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-800 bg-transparent">
                 {loading ? (
                   <tr>
                     <td
@@ -274,11 +275,11 @@ export default function CategoriesPage() {
                   </tr>
                 ) : (
                   filteredCategories.map((category) => (
-                    <tr key={category.id}>
+                    <tr key={category.id} className="hover:bg-slate-800/50 transition-colors">
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
                           <span
-                            className="h-4 w-4 rounded-full border border-slate-200"
+                            className="h-4 w-4 rounded-full border border-slate-700"
                             style={{
                               backgroundColor:
                                 category.color_code ?? DEFAULT_COLOR,
@@ -289,7 +290,7 @@ export default function CategoriesPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 font-semibold text-slate-900">
+                      <td className="px-4 py-4 font-semibold text-slate-200">
                         {category.name}
                       </td>
                       <td className="px-4 py-4 text-slate-500">
@@ -328,107 +329,94 @@ export default function CategoriesPage() {
         </CardContent>
       </Card>
 
-      {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="w-full max-w-lg rounded-lg bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {currentCategory ? "Edit Category" : "Add Category"}
-              </h2>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="text-sm font-medium text-slate-500 hover:text-slate-700"
-              >
-                Close
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4 p-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
-                  Name
-                </label>
-                <Input
-                  value={formData.name}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      name: event.target.value,
-                    }))
-                  }
-                  placeholder="Category name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      description: event.target.value,
-                    }))
-                  }
-                  placeholder="Short description (optional)"
-                  className="min-h-[96px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
-                  Color
-                </label>
-                <div className="flex items-center gap-4">
-                  <input
-                    type="color"
-                    value={formData.color_code}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        color_code: event.target.value,
-                      }))
-                    }
-                    className="h-10 w-16 cursor-pointer rounded-md border border-slate-200 bg-white p-1"
-                  />
-                  <Input
-                    value={formData.color_code}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        color_code: event.target.value,
-                      }))
-                    }
-                    placeholder="#cbd5e1"
-                  />
-                </div>
-              </div>
-
-              {formError ? (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {formError}
-                </div>
-              ) : null}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={closeModal}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting
-                    ? "Saving..."
-                    : currentCategory
-                    ? "Save Changes"
-                    : "Create Category"}
-                </Button>
-              </div>
-            </form>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={currentCategory ? "Edit Category" : "Add Category"}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-300">
+              Name
+            </label>
+            <Input
+              value={formData.name}
+              onChange={(event) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  name: event.target.value,
+                }))
+              }
+              placeholder="Category name"
+            />
           </div>
-        </div>
-      ) : null}
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-300">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(event) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  description: event.target.value,
+                }))
+              }
+              placeholder="Short description (optional)"
+              className="min-h-[96px] w-full rounded-md border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-300">
+              Color
+            </label>
+            <div className="flex items-center gap-4">
+              <input
+                type="color"
+                value={formData.color_code}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    color_code: event.target.value,
+                  }))
+                }
+                className="h-10 w-16 cursor-pointer rounded-md border border-slate-800 bg-slate-900/50 p-1"
+              />
+              <Input
+                value={formData.color_code}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    color_code: event.target.value,
+                  }))
+                }
+                placeholder="#cbd5e1"
+              />
+            </div>
+          </div>
+
+          {formError ? (
+            <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              {formError}
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={closeModal}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? "Saving..."
+                : currentCategory
+                ? "Save Changes"
+                : "Create Category"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

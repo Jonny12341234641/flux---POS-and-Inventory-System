@@ -16,14 +16,14 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-brand-DEFAULT text-white shadow-md hover:bg-brand-dark hover:shadow-lg",
+        default: "bg-emerald-500 text-white shadow-md hover:bg-emerald-600 hover:shadow-lg",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
-          "border border-zinc-700 bg-transparent shadow-sm hover:bg-zinc-800 hover:text-zinc-50 text-zinc-200",
-        secondary: "bg-zinc-800 text-zinc-50 shadow-sm hover:bg-zinc-700",
-        ghost: "hover:bg-zinc-800 hover:text-zinc-50 text-zinc-400",
-        link: "text-brand-DEFAULT underline-offset-4 hover:underline",
+          "border border-slate-700 bg-transparent shadow-sm hover:bg-slate-800 hover:text-white text-slate-200",
+        secondary: "bg-slate-800 text-slate-50 shadow-sm hover:bg-slate-700",
+        ghost: "hover:bg-slate-800 hover:text-slate-50 text-slate-400",
+        link: "text-emerald-500 underline-offset-4 hover:underline",
       },
       size: {
         default: "h-9 px-4 py-2",

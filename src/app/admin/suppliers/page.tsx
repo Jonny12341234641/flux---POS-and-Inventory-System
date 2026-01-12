@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   useEffect,
@@ -25,7 +25,8 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
-import type { Supplier } from "../../../../types/index";
+import { Modal } from "../../../components/ui/modal";
+import type { Supplier } from "../../../types/index";
 
 interface SupplierFormData {
   name: string;
@@ -76,7 +77,7 @@ const Textarea = ({
 }: TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <textarea
     {...props}
-    className={`min-h-[96px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 ${
+    className={`min-h-[96px] w-full rounded-md border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 ${
       className ?? ""
     }`}
   />
@@ -316,11 +317,11 @@ export default function SuppliersPage() {
     <div className="space-y-6 pb-16">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold text-slate-900">
-            <Truck className="h-5 w-5 text-slate-500" />
+          <h1 className="flex items-center gap-2 text-2xl font-semibold text-white">
+            <Truck className="h-5 w-5 text-slate-400" />
             Suppliers
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-400">
             Manage your procurement address book and supplier status.
           </p>
         </div>
@@ -348,8 +349,8 @@ export default function SuppliersPage() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <table className="min-w-full divide-y divide-slate-800 text-sm">
+              <thead className="bg-slate-900/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Name</th>
@@ -359,7 +360,7 @@ export default function SuppliersPage() {
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-800 bg-transparent">
                 {loading ? (
                   <tr>
                     <td
@@ -388,23 +389,23 @@ export default function SuppliersPage() {
                     const isInactive = !supplier.is_active;
 
                     return (
-                      <tr key={supplier.id} className={isInactive ? "bg-slate-50" : ""}>
+                      <tr key={supplier.id} className={isInactive ? "bg-slate-900/20" : "hover:bg-slate-800/50 transition-colors"}>
                         <td className="px-4 py-4">
                           <Badge
                             label={isInactive ? "Inactive" : "Active"}
                             className={
                               isInactive
-                                ? "bg-slate-200 text-slate-600"
-                                : "bg-emerald-100 text-emerald-700"
+                                ? "bg-slate-800 text-slate-400"
+                                : "bg-emerald-500/10 text-emerald-400"
                             }
                           />
                         </td>
-                        <td className="px-4 py-4 font-semibold text-slate-900">
+                        <td className="px-4 py-4 font-semibold text-slate-200">
                           {supplier.name}
                         </td>
-                        <td className="px-4 py-4 text-slate-600">
+                        <td className="px-4 py-4 text-slate-400">
                           <div className="flex flex-col gap-1">
-                            <span className="text-slate-700">{contactName}</span>
+                            <span className="text-slate-300">{contactName}</span>
                             <span className="inline-flex items-center gap-1 text-xs">
                               <Phone className="h-3.5 w-3.5" />
                               {phone}
@@ -429,7 +430,7 @@ export default function SuppliersPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => openEditModal(supplier)}
-                              className="inline-flex items-center gap-2 text-blue-600"
+                              className="inline-flex items-center gap-2"
                             >
                               <Edit className="h-4 w-4" />
                               Edit
@@ -440,7 +441,7 @@ export default function SuppliersPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleReactivate(supplier)}
-                                className="inline-flex items-center gap-2 text-emerald-600"
+                                className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300"
                               >
                                 <RotateCcw className="h-4 w-4" />
                                 Reactivate
@@ -449,9 +450,9 @@ export default function SuppliersPage() {
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="outline"
+                                variant="destructive"
                                 onClick={() => handleDelete(supplier)}
-                                className="inline-flex items-center gap-2 text-red-600"
+                                className="inline-flex items-center gap-2"
                               >
                                 <Trash className="h-4 w-4" />
                                 Delete
@@ -469,225 +470,219 @@ export default function SuppliersPage() {
         </CardContent>
       </Card>
 
-      {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <CardContent className="space-y-6 p-6">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">
-                  {currentSupplier ? "Edit Supplier" : "Add Supplier"}
-                </h2>
-                <p className="text-sm text-slate-500">
-                  {currentSupplier
-                    ? "Update supplier contact and invoicing details."
-                    : "Add a new supplier to your address book."}
-                </p>
-              </div>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={currentSupplier ? "Edit Supplier" : "Add Supplier"}
+        className="max-w-3xl"
+      >
+        <p className="text-sm text-slate-400 mb-6">
+          {currentSupplier
+            ? "Update supplier contact and invoicing details."
+            : "Add a new supplier to your address book."}
+        </p>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="supplier-name"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      Supplier Name <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      id="supplier-name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      placeholder="Acme Distributors"
-                      required
-                    />
-                  </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label
+                htmlFor="supplier-name"
+                className="text-sm font-medium text-slate-300"
+              >
+                Supplier Name <span className="text-red-400">*</span>
+              </label>
+              <Input
+                id="supplier-name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="Acme Distributors"
+                required
+              />
+            </div>
 
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="contact-person"
-                      className="text-sm font-medium text-slate-700"
-                    >
-                      Contact Person
-                    </label>
-                    <Input
-                      id="contact-person"
-                      name="contact_person"
-                      value={formData.contact_person}
-                      onChange={handleInputChange}
-                      placeholder="Jane Perera"
-                    />
-                  </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="contact-person"
+                className="text-sm font-medium text-slate-300"
+              >
+                Contact Person
+              </label>
+              <Input
+                id="contact-person"
+                name="contact_person"
+                value={formData.contact_person}
+                onChange={handleInputChange}
+                placeholder="Jane Perera"
+              />
+            </div>
 
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="supplier-phone"
-                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
-                    >
-                      <Phone className="h-4 w-4 text-slate-400" />
-                      Phone
-                    </label>
-                    <Input
-                      id="supplier-phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="+94 77 123 4567"
-                    />
-                  </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="supplier-phone"
+                className="flex items-center gap-2 text-sm font-medium text-slate-300"
+              >
+                <Phone className="h-4 w-4 text-slate-400" />
+                Phone
+              </label>
+              <Input
+                id="supplier-phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="+94 77 123 4567"
+              />
+            </div>
 
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="supplier-email"
-                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
-                    >
-                      <Mail className="h-4 w-4 text-slate-400" />
-                      Email
-                    </label>
-                    <Input
-                      id="supplier-email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="procurement@acme.com"
-                    />
-                  </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="supplier-email"
+                className="flex items-center gap-2 text-sm font-medium text-slate-300"
+              >
+                <Mail className="h-4 w-4 text-slate-400" />
+                Email
+              </label>
+              <Input
+                id="supplier-email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="procurement@acme.com"
+              />
+            </div>
 
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="supplier-tax-id"
-                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
-                    >
-                      <FileText className="h-4 w-4 text-slate-400" />
-                      Tax ID
-                    </label>
-                    <Input
-                      id="supplier-tax-id"
-                      name="tax_id"
-                      value={formData.tax_id}
-                      onChange={handleInputChange}
-                      placeholder="TAX-0001234"
-                    />
-                  </div>
-                   <div className="space-y-2">
-                    <label
-                      htmlFor="supplier-website"
-                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
-                    >
-                      <Globe className="h-4 w-4 text-slate-400" />
-                      Website
-                    </label>
-                    <Input
-                      id="supplier-website"
-                      name="website"
-                      value={formData.website}
-                      onChange={handleInputChange}
-                      placeholder="https://acme.com"
-                    />
-                  </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="supplier-tax-id"
+                className="flex items-center gap-2 text-sm font-medium text-slate-300"
+              >
+                <FileText className="h-4 w-4 text-slate-400" />
+                Tax ID
+              </label>
+              <Input
+                id="supplier-tax-id"
+                name="tax_id"
+                value={formData.tax_id}
+                onChange={handleInputChange}
+                placeholder="TAX-0001234"
+              />
+            </div>
+              <div className="space-y-2">
+              <label
+                htmlFor="supplier-website"
+                className="flex items-center gap-2 text-sm font-medium text-slate-300"
+              >
+                <Globe className="h-4 w-4 text-slate-400" />
+                Website
+              </label>
+              <Input
+                id="supplier-website"
+                name="website"
+                value={formData.website}
+                onChange={handleInputChange}
+                placeholder="https://acme.com"
+              />
+            </div>
 
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="supplier-payment-terms"
-                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
-                    >
-                      <CreditCard className="h-4 w-4 text-slate-400" />
-                      Payment Terms
-                    </label>
-                    <Input
-                      id="supplier-payment-terms"
-                      name="payment_terms"
-                      value={formData.payment_terms}
-                      onChange={handleInputChange}
-                      placeholder="Net 30, COD, etc."
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="supplier-lead-time"
-                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
-                    >
-                      <Truck className="h-4 w-4 text-slate-400" />
-                      Lead Time (Days)
-                    </label>
-                    <Input
-                      id="supplier-lead-time"
-                      name="lead_time_days"
-                      type="number"
-                      min="0"
-                      value={formData.lead_time_days}
-                      onChange={handleInputChange}
-                      placeholder="7"
-                    />
-                  </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="supplier-payment-terms"
+                className="flex items-center gap-2 text-sm font-medium text-slate-300"
+              >
+                <CreditCard className="h-4 w-4 text-slate-400" />
+                Payment Terms
+              </label>
+              <Input
+                id="supplier-payment-terms"
+                name="payment_terms"
+                value={formData.payment_terms}
+                onChange={handleInputChange}
+                placeholder="Net 30, COD, etc."
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label
+                htmlFor="supplier-lead-time"
+                className="flex items-center gap-2 text-sm font-medium text-slate-300"
+              >
+                <Truck className="h-4 w-4 text-slate-400" />
+                Lead Time (Days)
+              </label>
+              <Input
+                id="supplier-lead-time"
+                name="lead_time_days"
+                type="number"
+                min="0"
+                value={formData.lead_time_days}
+                onChange={handleInputChange}
+                placeholder="7"
+              />
+            </div>
 
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="supplier-moq"
-                      className="flex items-center gap-2 text-sm font-medium text-slate-700"
-                    >
-                      <Package className="h-4 w-4 text-slate-400" />
-                      MOQ
-                    </label>
-                    <Input
-                      id="supplier-moq"
-                      name="moq"
-                      type="number"
-                      min="0"
-                      value={formData.moq}
-                      onChange={handleInputChange}
-                      placeholder="100"
-                    />
-                  </div>
-                </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="supplier-moq"
+                className="flex items-center gap-2 text-sm font-medium text-slate-300"
+              >
+                <Package className="h-4 w-4 text-slate-400" />
+                MOQ
+              </label>
+              <Input
+                id="supplier-moq"
+                name="moq"
+                type="number"
+                min="0"
+                value={formData.moq}
+                onChange={handleInputChange}
+                placeholder="100"
+              />
+            </div>
+          </div>
 
-                <div className="space-y-2">
-                  <label
-                    htmlFor="supplier-address"
-                    className="text-sm font-medium text-slate-700"
-                  >
-                    Address
-                  </label>
-                  <Textarea
-                    id="supplier-address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    placeholder="Street, City, Province"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label
-                    htmlFor="supplier-notes"
-                    className="text-sm font-medium text-slate-700"
-                  >
-                    Notes
-                  </label>
-                  <Textarea
-                    id="supplier-notes"
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    placeholder="Internal notes about this supplier..."
-                  />
-                </div>
+          <div className="space-y-2">
+            <label
+              htmlFor="supplier-address"
+              className="text-sm font-medium text-slate-300"
+            >
+              Address
+            </label>
+            <Textarea
+              id="supplier-address"
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              placeholder="Street, City, Province"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label
+              htmlFor="supplier-notes"
+              className="text-sm font-medium text-slate-300"
+            >
+              Notes
+            </label>
+            <Textarea
+              id="supplier-notes"
+              name="notes"
+              value={formData.notes}
+              onChange={handleInputChange}
+              placeholder="Internal notes about this supplier..."
+            />
+          </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                  <Button type="button" variant="outline" onClick={closeModal}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="inline-flex items-center gap-2">
-                    {currentSupplier ? "Update Supplier" : "Create Supplier"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" onClick={closeModal}>
+              Cancel
+            </Button>
+            <Button type="submit" className="inline-flex items-center gap-2">
+              {currentSupplier ? "Update Supplier" : "Create Supplier"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

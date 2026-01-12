@@ -57,7 +57,7 @@ export default function SideBar() {
     <aside
       className={cn(
         "group/sidebar relative flex h-screen shrink-0 flex-col transition-all duration-300 ease-in-out",
-        "border-r border-white/5 bg-zinc-950 text-white",
+        "border-r border-slate-800 bg-slate-950 text-slate-100",
         isCollapsed ? "w-[80px]" : "w-[260px]"
       )}
     >
@@ -65,7 +65,7 @@ export default function SideBar() {
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="absolute -right-3 top-8 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-400 opacity-0 shadow-lg transition-all hover:bg-zinc-800 hover:text-white group-hover/sidebar:opacity-100"
+        className="absolute -right-3 top-8 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-slate-800 bg-slate-900 text-slate-400 opacity-0 shadow-lg transition-all hover:bg-slate-800 hover:text-white group-hover/sidebar:opacity-100"
       >
         {isCollapsed ? (
           <ChevronRight className="h-3 w-3" />
@@ -77,7 +77,7 @@ export default function SideBar() {
       {/* Header / Logo */}
       <div className={cn("flex items-center px-6 pt-8 pb-8", isCollapsed ? "justify-center px-2" : "")}>
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/20">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20">
             <span className="text-lg font-bold text-white">F</span>
           </div>
           <div
@@ -89,7 +89,7 @@ export default function SideBar() {
             <span className="whitespace-nowrap text-sm font-bold tracking-wide text-white">
               FLUX POS
             </span>
-            <span className="whitespace-nowrap text-[10px] uppercase tracking-wider text-zinc-500">
+            <span className="whitespace-nowrap text-[10px] uppercase tracking-wider text-slate-500">
               Management
             </span>
           </div>
@@ -110,19 +110,19 @@ export default function SideBar() {
                 className={cn(
                   "relative flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 group",
                   active
-                    ? "bg-white/10 text-white shadow-sm ring-1 ring-white/10"
-                    : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200",
+                    ? "bg-slate-800/50 text-emerald-400 ring-1 ring-slate-700"
+                    : "text-slate-400 hover:bg-slate-900 hover:text-slate-200",
                   isCollapsed && "justify-center px-0"
                 )}
               >
                 {active && !isCollapsed && (
-                   <div className="absolute left-0 h-6 w-1 rounded-r-full bg-indigo-500" />
+                   <div className="absolute left-0 h-6 w-1 rounded-r-full bg-emerald-500" />
                 )}
                 
                 <Icon
                   className={cn(
                     "h-5 w-5 shrink-0 transition-colors",
-                    active ? "text-indigo-400" : "text-zinc-500 group-hover:text-zinc-300"
+                    active ? "text-emerald-400" : "text-slate-500 group-hover:text-slate-300"
                   )}
                 />
                 
@@ -142,11 +142,11 @@ export default function SideBar() {
 
       {/* Footer */}
       <div className="p-4">
-        <div className="mb-4 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        <div className="mb-4 h-px w-full bg-gradient-to-r from-transparent via-slate-800 to-transparent" />
         <button
           onClick={handleLogout}
           className={cn(
-            "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-zinc-400 transition-all hover:bg-red-500/10 hover:text-red-400",
+            "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-400",
             isCollapsed && "justify-center px-0"
           )}
           title="Sign Out"

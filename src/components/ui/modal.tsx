@@ -55,7 +55,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
           onClick={onClose}
           role="dialog"
           aria-modal="true"
@@ -67,23 +67,23 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2, type: "spring", stiffness: 300, damping: 30 }}
             className={cn(
-              "relative z-50 w-full max-w-lg rounded-lg bg-white p-6 shadow-lg border border-zinc-100",
+              "relative z-50 w-full max-w-lg rounded-lg bg-slate-900 border border-slate-800 shadow-2xl p-6",
               className,
             )}
             onClick={(event: MouseEvent) => event.stopPropagation()}
           >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-zinc-900">{title}</h2>
+            <div className="mb-4 flex items-center justify-between border-b border-slate-800 pb-4">
+              <h2 className="text-lg font-semibold text-white">{title}</h2>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-zinc-500 hover:text-zinc-900"
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 text-slate-500 hover:text-white"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="text-zinc-900">
+            <div className="text-slate-200">
               {children}
             </div>
           </motion.div>

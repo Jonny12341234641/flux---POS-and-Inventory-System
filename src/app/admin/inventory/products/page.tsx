@@ -6,6 +6,7 @@ import { AlertTriangle, Edit, Plus, Search, Trash } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
 import { Card, CardContent } from "../../../../components/ui/card";
+import { Modal } from "../../../../components/ui/modal";
 
 interface Category {
   id: string;
@@ -94,7 +95,7 @@ export default function ProductsManagementPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const PAGE_LIMIT = 20; // Assumed default limit
+  const PAGE_LIMIT = 20;
 
   const fetchCategories = async () => {
     try {
@@ -142,12 +143,10 @@ export default function ProductsManagementPage() {
     }
   };
 
-  // Initial load for categories
   useEffect(() => {
     fetchCategories();
   }, []);
 
-  // Debounced search and pagination for products
   useEffect(() => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -162,7 +161,7 @@ export default function ProductsManagementPage() {
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
-    setPage(1); // Reset to page 1 on new search
+    setPage(1);
   };
 
   const handleNextPage = () => {
@@ -325,8 +324,8 @@ export default function ProductsManagementPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Inventory</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-white">Inventory</h1>
+          <p className="text-sm text-slate-400">
             Manage your product catalog and stock levels.
           </p>
         </div>
@@ -356,16 +355,16 @@ export default function ProductsManagementPage() {
       ) : null}
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
       ) : null}
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <table className="min-w-full divide-y divide-slate-800 text-sm">
+              <thead className="bg-slate-900/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Barcode</th>
@@ -375,7 +374,7 @@ export default function ProductsManagementPage() {
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-800 bg-transparent">
                 {products.length === 0 && !loading ? (
                   <tr>
                     <td
@@ -393,29 +392,29 @@ export default function ProductsManagementPage() {
                     const categoryLabel = resolveCategoryLabel(product);
 
                     return (
-                      <tr key={product.id}>
-                        <td className="px-4 py-4 font-semibold text-slate-900">
+                      <tr key={product.id} className="hover:bg-slate-800/50 transition-colors">
+                        <td className="px-4 py-4 font-semibold text-slate-200">
                           {product.name}
                         </td>
                         <td className="px-4 py-4 text-xs text-slate-500">
                           {product.barcode}
                         </td>
                         <td className="px-4 py-4">
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                          <span className="inline-flex items-center rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
                             {categoryLabel}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-slate-700">
+                        <td className="px-4 py-4 text-slate-200">
                           {formatCurrency(product.price)}
                         </td>
                         <td className="px-4 py-4">
                           {isLowStock ? (
-                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-red-600">
+                            <span className="inline-flex items-center gap-2 text-sm font-semibold text-red-400">
                               <AlertTriangle className="h-4 w-4" />
                               {product.stock_quantity} {unitLabel}
                             </span>
                           ) : (
-                            <span className="text-sm text-slate-700">
+                            <span className="text-sm text-slate-200">
                               {product.stock_quantity} {unitLabel}
                             </span>
                           )}
@@ -452,7 +451,7 @@ export default function ProductsManagementPage() {
             </table>
           </div>
 
-          <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-4">
+          <div className="flex items-center justify-between border-t border-slate-800 p-4">
             <span className="text-sm text-slate-500">
               Page {page}
             </span>
@@ -478,218 +477,205 @@ export default function ProductsManagementPage() {
         </CardContent>
       </Card>
 
-      {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {currentProduct ? "Edit Product" : "Add Product"}
-              </h2>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="text-sm font-medium text-slate-500 hover:text-slate-700"
-              >
-                Close
-              </button>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={currentProduct ? "Edit Product" : "Add Product"}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Name
+              </label>
+              <Input
+                value={formData.name}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    name: event.target.value,
+                  }))
+                }
+                placeholder="Product name"
+              />
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4 p-6">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Name
-                  </label>
-                  <Input
-                    value={formData.name}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        name: event.target.value,
-                      }))
-                    }
-                    placeholder="Product name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Barcode
-                  </label>
-                  <Input
-                    value={formData.barcode}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        barcode: event.target.value,
-                      }))
-                    }
-                    placeholder="SKU / Barcode"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Category
-                  </label>
-                  <select
-                    value={formData.category_id}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        category_id: event.target.value,
-                      }))
-                    }
-                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
-                  >
-                    <option value="">Unassigned</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Unit
-                  </label>
-                  <select
-                    value={formData.unit}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        unit: event.target.value,
-                      }))
-                    }
-                    className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
-                  >
-                    {UNIT_OPTIONS.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Price
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        price: Number(event.target.value),
-                      }))
-                    }
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Cost
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.cost_price}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        cost_price: Number(event.target.value),
-                      }))
-                    }
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Stock Quantity
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.stock_quantity}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        stock_quantity: Number(event.target.value),
-                      }))
-                    }
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Reorder Level
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.reorder_level}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        reorder_level: Number(event.target.value),
-                      }))
-                    }
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
-                  Image URL
-                </label>
-                <Input
-                  value={formData.image_url}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      image_url: event.target.value,
-                    }))
-                  }
-                  placeholder="https://"
-                />
-              </div>
-
-              {formError ? (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {formError}
-                </div>
-              ) : null}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={closeModal}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting
-                    ? "Saving..."
-                    : currentProduct
-                    ? "Save Changes"
-                    : "Create Product"}
-                </Button>
-              </div>
-            </form>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Barcode
+              </label>
+              <Input
+                value={formData.barcode}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    barcode: event.target.value,
+                  }))
+                }
+                placeholder="SKU / Barcode"
+              />
+            </div>
           </div>
-        </div>
-      ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Category
+              </label>
+              <select
+                value={formData.category_id}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    category_id: event.target.value,
+                  }))
+                }
+                className="h-10 w-full rounded-md border border-slate-800 bg-slate-900/50 px-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              >
+                <option value="" className="bg-slate-900">Unassigned</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id} className="bg-slate-900">
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Unit
+              </label>
+              <select
+                value={formData.unit}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    unit: event.target.value,
+                  }))
+                }
+                className="h-10 w-full rounded-md border border-slate-800 bg-slate-900/50 px-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              >
+                {UNIT_OPTIONS.map((unit) => (
+                  <option key={unit} value={unit} className="bg-slate-900">
+                    {unit}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Price
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.price}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    price: Number(event.target.value),
+                  }))
+                }
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Cost
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.cost_price}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    cost_price: Number(event.target.value),
+                  }))
+                }
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Stock Quantity
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.stock_quantity}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    stock_quantity: Number(event.target.value),
+                  }))
+                }
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Reorder Level
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.reorder_level}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    reorder_level: Number(event.target.value),
+                  }))
+                }
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-300">
+              Image URL
+            </label>
+            <Input
+              value={formData.image_url}
+              onChange={(event) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  image_url: event.target.value,
+                }))
+              }
+              placeholder="https://"
+            />
+          </div>
+
+          {formError ? (
+            <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              {formError}
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={closeModal}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? "Saving..."
+                : currentProduct
+                ? "Save Changes"
+                : "Create Product"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Edit, Mail, Phone, Plus, Search, Trash, Users } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Card, CardContent } from "../../../components/ui/card";
+import { Modal } from "../../../components/ui/modal";
 import type { Customer } from "../../../types/index";
 
 interface CustomerFormData {
@@ -274,12 +275,12 @@ export default function CustomersManagementPage() {
       <header className="flex flex-col gap-4 lg:flex-row lg:items-center">
         <div className="space-y-1 lg:flex-1">
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-slate-500" />
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <Users className="h-5 w-5 text-slate-400" />
+            <h1 className="text-2xl font-semibold text-white">
               Customers
             </h1>
           </div>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-400">
             Manage loyalty members and customer contact details.
           </p>
         </div>
@@ -311,16 +312,16 @@ export default function CustomersManagementPage() {
       ) : null}
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
       ) : null}
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <table className="min-w-full divide-y divide-slate-800 text-sm">
+              <thead className="bg-slate-900/50 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Phone</th>
@@ -331,7 +332,7 @@ export default function CustomersManagementPage() {
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-800 bg-transparent">
                 {loading ? (
                   <tr>
                     <td
@@ -352,37 +353,37 @@ export default function CustomersManagementPage() {
                   </tr>
                 ) : (
                   customers.map((customer) => (
-                    <tr key={customer.id}>
-                      <td className="px-4 py-4 font-semibold text-slate-900">
+                    <tr key={customer.id} className="hover:bg-slate-800/50 transition-colors">
+                      <td className="px-4 py-4 font-semibold text-slate-200">
                         {customer.name}
                       </td>
-                      <td className="px-4 py-4 text-slate-700">
+                      <td className="px-4 py-4 text-slate-400">
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-slate-400" />
+                          <Phone className="h-4 w-4 text-slate-500" />
                           <span>{customer.phone}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-slate-600">
+                      <td className="px-4 py-4 text-slate-400">
                         {customer.email ? (
                           <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4 text-slate-400" />
+                            <Mail className="h-4 w-4 text-slate-500" />
                             <span>{customer.email}</span>
                           </div>
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="text-slate-500">-</span>
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                        <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
                           {customer.loyalty_points ?? 0} pts
                         </span>
                       </td>
                       <td className="px-4 py-4">
-                         <span className="font-medium text-slate-700">
+                         <span className="font-medium text-slate-300">
                           ${(customer.store_credit ?? 0).toFixed(2)}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-slate-600">
+                      <td className="px-4 py-4 text-slate-500">
                         {formatDate(customer.created_at)}
                       </td>
                       <td className="px-4 py-4">
@@ -418,216 +419,200 @@ export default function CustomersManagementPage() {
         </CardContent>
       </Card>
 
-      {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-lg overflow-y-auto max-h-[90vh]">
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {currentCustomer ? "Edit Customer" : "Add Customer"}
-              </h2>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="text-sm font-medium text-slate-500 hover:text-slate-700"
-              >
-                Close
-              </button>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={currentCustomer ? "Edit Customer" : "Add Customer"}
+        className="max-w-2xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Basic Info */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Name
+              </label>
+              <Input
+                value={formData.name}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    name: event.target.value,
+                  }))
+                }
+                placeholder="Customer name"
+              />
             </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4 p-6">
-              {/* Basic Info */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Name
-                  </label>
-                  <Input
-                    value={formData.name}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        name: event.target.value,
-                      }))
-                    }
-                    placeholder="Customer name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Phone
-                  </label>
-                  <Input
-                    value={formData.phone}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        phone: event.target.value,
-                      }))
-                    }
-                    placeholder="Phone number"
-                  />
-                </div>
-              </div>
-
-              {/* Email & Tax */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Email
-                  </label>
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        email: event.target.value,
-                      }))
-                    }
-                    placeholder="Email address"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Tax ID
-                  </label>
-                  <Input
-                    value={formData.tax_id}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        tax_id: event.target.value,
-                      }))
-                    }
-                    placeholder="Tax ID (optional)"
-                  />
-                </div>
-              </div>
-
-              {/* Credit & Tier */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Store Credit ($)
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.store_credit}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        store_credit: parseFloat(event.target.value) || 0,
-                      }))
-                    }
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">
-                    Tier ID
-                  </label>
-                  <Input
-                    value={formData.tier_id}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        tier_id: event.target.value,
-                      }))
-                    }
-                    placeholder="Tier ID (optional)"
-                  />
-                </div>
-              </div>
-
-              {/* Address Section */}
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-4">
-                <h3 className="mb-3 text-sm font-medium text-slate-900">Address</h3>
-                <div className="grid gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-slate-500">Street</label>
-                    <Input
-                      value={formData.address_street}
-                      onChange={(event) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          address_street: event.target.value,
-                        }))
-                      }
-                      placeholder="Street Address"
-                      className="bg-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-slate-500">City</label>
-                      <Input
-                        value={formData.address_city}
-                        onChange={(event) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            address_city: event.target.value,
-                          }))
-                        }
-                        placeholder="City"
-                        className="bg-white"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-slate-500">State</label>
-                      <Input
-                        value={formData.address_state}
-                        onChange={(event) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            address_state: event.target.value,
-                          }))
-                        }
-                        placeholder="State"
-                        className="bg-white"
-                      />
-                    </div>
-                    <div className="col-span-2 sm:col-span-1 space-y-1">
-                      <label className="text-xs font-medium text-slate-500">Zip Code</label>
-                      <Input
-                        value={formData.address_zip}
-                        onChange={(event) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            address_zip: event.target.value,
-                          }))
-                        }
-                        placeholder="Zip"
-                        className="bg-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {formError ? (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {formError}
-                </div>
-              ) : null}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={closeModal}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting
-                    ? "Saving..."
-                    : currentCustomer
-                    ? "Save Changes"
-                    : "Create Customer"}
-                </Button>
-              </div>
-            </form>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Phone
+              </label>
+              <Input
+                value={formData.phone}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    phone: event.target.value,
+                  }))
+                }
+                placeholder="Phone number"
+              />
+            </div>
           </div>
-        </div>
-      ) : null}
+
+          {/* Email & Tax */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Email
+              </label>
+              <Input
+                type="email"
+                value={formData.email}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    email: event.target.value,
+                  }))
+                }
+                placeholder="Email address"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Tax ID
+              </label>
+              <Input
+                value={formData.tax_id}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    tax_id: event.target.value,
+                  }))
+                }
+                placeholder="Tax ID (optional)"
+              />
+            </div>
+          </div>
+
+          {/* Credit & Tier */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Store Credit ($)
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.store_credit}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    store_credit: parseFloat(event.target.value) || 0,
+                  }))
+                }
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300">
+                Tier ID
+              </label>
+              <Input
+                value={formData.tier_id}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    tier_id: event.target.value,
+                  }))
+                }
+                placeholder="Tier ID (optional)"
+              />
+            </div>
+          </div>
+
+          {/* Address Section */}
+          <div className="rounded-md border border-slate-800 bg-slate-900/50 p-4">
+            <h3 className="mb-3 text-sm font-medium text-white">Address</h3>
+            <div className="grid gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-400">Street</label>
+                <Input
+                  value={formData.address_street}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      address_street: event.target.value,
+                    }))
+                  }
+                  placeholder="Street Address"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-400">City</label>
+                  <Input
+                    value={formData.address_city}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        address_city: event.target.value,
+                      }))
+                  }
+                    placeholder="City"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-400">State</label>
+                  <Input
+                    value={formData.address_state}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        address_state: event.target.value,
+                      }))
+                    }
+                    placeholder="State"
+                  />
+                </div>
+                <div className="col-span-2 sm:col-span-1 space-y-1">
+                  <label className="text-xs font-medium text-slate-400">Zip Code</label>
+                  <Input
+                    value={formData.address_zip}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        address_zip: event.target.value,
+                      }))
+                    }
+                    placeholder="Zip"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {formError ? (
+            <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              {formError}
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={closeModal}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? "Saving..."
+                : currentCustomer
+                ? "Save Changes"
+                : "Create Customer"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
