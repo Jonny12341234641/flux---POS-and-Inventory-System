@@ -150,8 +150,15 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // DEBUG: Log the actual error to your terminal
+      console.error("FULL CUSTOMER ERROR:", result.error);
+
       return NextResponse.json(
-        { success: false, error: "Internal Server Error" },
+        {
+          success: false,
+          // RETURN THE REAL ERROR message instead of "Internal Server Error"
+          error: result.error || "Unknown error occurred"
+        },
         { status: 500 }
       );
     }
