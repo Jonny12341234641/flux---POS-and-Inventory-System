@@ -215,17 +215,13 @@ export default function CustomersManagementPage() {
         body: JSON.stringify(payload),
       });
 
-      if (response.status === 409) {
-        window.alert("Phone number already exists");
-        return;
-      }
+      // 1. Read the JSON response FIRST, regardless of success/failure
+      const data = await response.json();
 
+      // 2. Check for failure
       if (!response.ok) {
-        throw new Error(
-          `Failed to ${currentCustomer ? "update" : "create"} customer (status ${
-            response.status
-          }).`
-        );
+        // 3. Throw the ACTUAL error message from the server
+        throw new Error(data.error || `Failed to save customer (status ${response.status})`);
       }
 
       await fetchCustomers(searchTerm);
