@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 import { Modal } from '../../components/ui/modal';
-import type { CartItem, Customer, Product, Sale } from '../../types';
+import type { CartItem, Customer, Product, Sale, ShiftSession } from '../../types';
 
 type PaymentMethod = 'cash' | 'card';
 
@@ -126,6 +126,41 @@ export default function POSPage() {
   const [draftSale, setDraftSale] = useState<Sale | null>(null);
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
   const [orderNumber, setOrderNumber] = useState(() => generateOrderNumber());
+  const [currentShift, setCurrentShift] = useState<ShiftSession | null>(null);
+  const [isShiftLoading, setIsShiftLoading] = useState(false);
+  const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
+  const [isOpeningShift, setIsOpeningShift] = useState(false);
+  const [startingCash, setStartingCash] = useState('0');
+  const [shiftError, setShiftError] = useState<string | null>(null);
+
+  const loadCurrentShift = async (signal?: AbortSignal) => {
+    setIsShiftLoading(true);
+    try {
+      const response = await fetch('/api/shifts', {
+        cache: 'no-store',
+        signal,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load shift status');
+      }
+
+      const data = await response.json();
+      if (!signal?.aborted) {
+        setCurrentShift((data?.data as ShiftSession | null) ?? null);
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      console.error('Failed to load shift status', error);
+      if (!signal?.aborted) {
+        setCurrentShift(null);
+      }
+    } finally {
+      if (!signal?.aborted) {
+        setIsShiftLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     if (stagedProduct && quantityInputRef.current) {
@@ -158,6 +193,13 @@ export default function POSPage() {
     };
 
     fetchSettings();
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadCurrentShift(controller.signal);
 
     return () => controller.abort();
   }, []);
@@ -396,9 +438,74 @@ export default function POSPage() {
       })
       .filter((item) => item.quantity > 0);
 
+  const openClockInModal = () => {
+    setShiftError(null);
+    setIsClockInModalOpen(true);
+  };
+
+  const closeClockInModal = () => {
+    setIsClockInModalOpen(false);
+    setShiftError(null);
+  };
+
+  const ensureOpenShift = () => {
+    if (currentShift) {
+      return true;
+    }
+
+    setShiftError('No open shift found. Please clock in.');
+    setIsClockInModalOpen(true);
+    return false;
+  };
+
+  const handleOpenShift = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setShiftError(null);
+
+    const parsedStartingCash = parseNumber(startingCash, Number.NaN);
+    if (!Number.isFinite(parsedStartingCash) || parsedStartingCash < 0) {
+      setShiftError('Starting cash must be a non-negative number.');
+      return;
+    }
+
+    setIsOpeningShift(true);
+    try {
+      const res = await fetch('/api/shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ starting_cash: parsedStartingCash }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to open shift');
+      }
+
+      setCurrentShift((data?.data as ShiftSession | null) ?? null);
+      closeClockInModal();
+      setStartingCash('0');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to open shift';
+      setShiftError(message);
+
+      if (
+        message.toLowerCase().includes('open shift') &&
+        message.toLowerCase().includes('already')
+      ) {
+        await loadCurrentShift();
+        closeClockInModal();
+      }
+    } finally {
+      setIsOpeningShift(false);
+    }
+  };
+
   const handleCheckout = async () => {
     const items = buildSaleItems();
     if (!items.length) return;
+    if (!ensureOpenShift()) return;
 
     setIsCheckingOut(true);
     try {
@@ -428,7 +535,14 @@ export default function POSPage() {
       setOrderNumber(generateOrderNumber());
     } catch (error) {
       console.error(error);
-      window.alert(error instanceof Error ? error.message : 'Checkout failed');
+      const message =
+        error instanceof Error ? error.message : 'Checkout failed';
+      if (message.toLowerCase().includes('no open shift')) {
+        setShiftError(message);
+        setIsClockInModalOpen(true);
+        return;
+      }
+      window.alert(message);
     } finally {
       setIsCheckingOut(false);
     }
@@ -792,13 +906,30 @@ export default function POSPage() {
                 </span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setCart([])}
-              className="flex items-center gap-2 rounded-lg border border-slate-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-400 transition hover:border-red-500/40 hover:text-red-300"
-            >
-              <Trash2 className="h-4 w-4" /> Clear
-            </button>
+            <div className="flex items-center gap-3">
+              {currentShift ? (
+                <div className="flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  Shift Open
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openClockInModal}
+                  disabled={isShiftLoading}
+                  className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200 transition hover:border-emerald-400 hover:text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isShiftLoading ? 'Checking...' : 'Clock In'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setCart([])}
+                className="flex items-center gap-2 rounded-lg border border-slate-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-400 transition hover:border-red-500/40 hover:text-red-300"
+              >
+                <Trash2 className="h-4 w-4" /> Clear
+              </button>
+            </div>
           </div>
 
           <div className="relative z-10 flex-1 space-y-3 overflow-y-auto p-4">
@@ -981,6 +1112,54 @@ export default function POSPage() {
           </div>
         </section>
       </div>
+
+      <Modal
+        isOpen={isClockInModalOpen}
+        onClose={closeClockInModal}
+        title="Clock In"
+      >
+        <form className="space-y-4" onSubmit={handleOpenShift}>
+          <p className="text-sm text-slate-400">
+            Open a shift to start processing sales.
+          </p>
+          <div>
+            <label className="text-sm font-medium text-slate-300">
+              Starting Cash
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={startingCash}
+              onChange={(event) => setStartingCash(event.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              required
+            />
+          </div>
+          {shiftError && (
+            <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {shiftError}
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={closeClockInModal}
+              className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isOpeningShift}
+              className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isOpeningShift ? 'Opening...' : 'Open Shift'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal
         isOpen={isCustomerModalOpen}

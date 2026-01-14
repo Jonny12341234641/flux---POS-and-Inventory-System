@@ -45,6 +45,9 @@ type NormalizedSaleItem = {
 const isInsufficientStock = (message: string) =>
   message.toLowerCase().includes('insufficient stock');
 
+const isOpenShiftMissing = (message: string) =>
+  message.toLowerCase().includes('no open shift');
+
 const isPaymentMethod = (
   value: unknown
 ): value is SalePayload['payment_method'] =>
@@ -187,7 +190,11 @@ export async function POST(request: Request) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to process sale';
-    const status = isInsufficientStock(message) ? 400 : 500;
+    const status = isInsufficientStock(message)
+      ? 400
+      : isOpenShiftMissing(message)
+        ? 409
+        : 500;
 
     return NextResponse.json({ error: message }, { status });
   }
