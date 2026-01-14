@@ -39,12 +39,19 @@ export default function LoginPage() {
         body: JSON.stringify({ email: email.trim(), password }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         router.refresh();
-        router.replace("/pos");
+        if (data.user?.role === "admin") {
+          router.replace("/admin");
+        } else {
+          router.replace("/pos");
+        }
       } else {
-        const data = await response.json();
-        setError(data.error || "Failed to sign in. Please check your credentials.");
+        setError(
+          data.error || "Failed to sign in. Please check your credentials."
+        );
         setIsSubmitting(false);
       }
     } catch (err) {
