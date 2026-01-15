@@ -181,6 +181,7 @@ export async function PUT(req: Request) {
       { status: 200 }
     );
   } catch (error) {
+    console.error("SETTINGS API ERROR:", error);
     return NextResponse.json(
       { success: false, error: getErrorMessage(error, "Internal Server Error") },
       { status: 500 }

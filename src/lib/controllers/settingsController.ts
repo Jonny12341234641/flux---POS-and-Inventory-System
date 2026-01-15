@@ -55,13 +55,22 @@ const validateSettings = (data: SettingsUpdate): string | null => {
   }
 
   if (typeof data.default_tax_rate !== 'undefined') {
-    if (data.default_tax_rate === null) {
+    const rawValue = data.default_tax_rate;
+
+    // Handle null explicitly if needed
+    if (rawValue === null) {
       return 'Tax rate must be a number.';
     }
-    const parsedRate = Number(data.default_tax_rate);
+
+    // Safe parsing that doesn't rely on string methods like .trim() immediately
+    const parsedRate = typeof rawValue === 'number' 
+      ? rawValue 
+      : parseFloat(String(rawValue));
+
     if (!Number.isFinite(parsedRate)) {
       return 'Tax rate must be a number.';
     }
+
     if (parsedRate < 0 || parsedRate > 100) {
       return 'Tax rate must be between 0 and 100.';
     }
