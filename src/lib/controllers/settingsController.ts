@@ -1,4 +1,5 @@
-import { supabase } from '../../lib/supabase';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { supabase as defaultSupabase } from '../../lib/supabase';
 import { LOW_STOCK_THRESHOLD, TABLES } from '../../lib/constants';
 import type { ActionResponse, Settings } from '../../types';
 
@@ -99,8 +100,10 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 const logSettingsChange = async (
   userId: string,
   action: string,
-  details: string
+  details: string,
+  supabaseClient?: SupabaseClient
 ) => {
+  const supabase = supabaseClient ?? defaultSupabase;
   try {
     await supabase.from(TABLES.AUDIT_LOGS).insert({
       user_id: userId,
@@ -113,7 +116,8 @@ const logSettingsChange = async (
   }
 };
 
-const fetchSettingsRow = async (): Promise<Settings | null> => {
+const fetchSettingsRow = async (supabaseClient?: SupabaseClient): Promise<Settings | null> => {
+  const supabase = supabaseClient ?? defaultSupabase;
   const { data, error } = await supabase
     .from(TABLES.SETTINGS)
     .select('*')
@@ -127,11 +131,11 @@ const fetchSettingsRow = async (): Promise<Settings | null> => {
   return data as Settings | null;
 };
 
-export const getSettings = async (): Promise<
+export const getSettings = async (supabaseClient?: SupabaseClient): Promise<
   ActionResponse<Settings | null>
 > => {
   try {
-    const settings = await fetchSettingsRow();
+    const settings = await fetchSettingsRow(supabaseClient);
     return { success: true, data: settings ?? buildDefaultSettings() };
   } catch (error) {
     return {
@@ -143,8 +147,10 @@ export const getSettings = async (): Promise<
 
 export const updateSettings = async (
   data: SettingsUpdate,
-  userId: string
+  userId: string,
+  supabaseClient?: SupabaseClient
 ): Promise<ActionResponse<Settings>> => {
+  const supabase = supabaseClient ?? defaultSupabase;
   try {
     const hasUpdates = Object.values(data).some(
       (value) => typeof value !== 'undefined'
@@ -179,7 +185,8 @@ export const updateSettings = async (
     await logSettingsChange(
       userId,
       'UPDATE',
-      `Updated fields: ${changedFields}`
+      `Updated fields: ${changedFields}`,
+      supabase
     );
 
     return { success: true, data: updatedSettings as Settings };
@@ -193,10 +200,12 @@ export const updateSettings = async (
 
 export const initializeSettings = async (
   data: SettingsInsert,
-  userId?: string
+  userId?: string,
+  supabaseClient?: SupabaseClient
 ): Promise<ActionResponse<Settings>> => {
+  const supabase = supabaseClient ?? defaultSupabase;
   try {
-    const existing = await fetchSettingsRow();
+    const existing = await fetchSettingsRow(supabase);
 
     if (existing) {
       return { success: true, data: existing };
@@ -219,7 +228,7 @@ export const initializeSettings = async (
     }
 
     if (userId) {
-      await logSettingsChange(userId, 'INIT', 'Initialized system settings');
+      await logSettingsChange(userId, 'INIT', 'Initialized system settings', supabase);
     }
 
     return { success: true, data: createdSettings as Settings };

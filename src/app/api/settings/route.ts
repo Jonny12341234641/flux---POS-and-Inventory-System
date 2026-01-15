@@ -102,7 +102,8 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
 
 export async function GET() {
   try {
-    const result = await getSettings();
+    const supabase = await createClient();
+    const result = await getSettings(supabase);
 
     if (!result.success || !result.data) {
       throw new Error(result.error ?? "Failed to fetch settings");
@@ -170,7 +171,7 @@ export async function PUT(req: Request) {
       );
     }
 
-    const result = await updateSettings(payload, user.id);
+    const result = await updateSettings(payload, user.id, supabase);
 
     if (!result.success || !result.data) {
       throw new Error(result.error ?? "Failed to update settings");
