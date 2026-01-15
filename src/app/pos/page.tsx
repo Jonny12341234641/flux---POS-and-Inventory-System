@@ -133,6 +133,12 @@ export default function POSPage() {
   const [startingCash, setStartingCash] = useState('0');
   const [shiftError, setShiftError] = useState<string | null>(null);
 
+  const [isCloseShiftModalOpen, setIsCloseShiftModalOpen] = useState(false);
+  const [endingCash, setEndingCash] = useState('');
+  const [closingNotes, setClosingNotes] = useState('');
+  const [isClosingShift, setIsClosingShift] = useState(false);
+  const [closeShiftError, setCloseShiftError] = useState<string | null>(null);
+
   const loadCurrentShift = async (signal?: AbortSignal) => {
     setIsShiftLoading(true);
     try {
@@ -456,6 +462,57 @@ export default function POSPage() {
     setShiftError('No open shift found. Please clock in.');
     setIsClockInModalOpen(true);
     return false;
+  };
+
+  const openCloseShiftModal = () => {
+    setCloseShiftError(null);
+    setEndingCash('');
+    setClosingNotes('');
+    setIsCloseShiftModalOpen(true);
+  };
+
+  const handleCloseShift = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCloseShiftError(null);
+
+    if (!currentShift) return;
+
+    const parsedEndingCash = parseNumber(endingCash, Number.NaN);
+    if (!Number.isFinite(parsedEndingCash) || parsedEndingCash < 0) {
+      setCloseShiftError('Ending cash must be a non-negative number.');
+      return;
+    }
+
+    setIsClosingShift(true);
+    try {
+      const res = await fetch(`/api/shifts/${currentShift.id}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ending_cash: parsedEndingCash,
+          notes: closingNotes.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to close shift');
+      }
+
+      window.alert('Shift closed successfully');
+      setCurrentShift(null);
+      setCart([]);
+      setSelectedCustomer(null);
+      setStagedProduct(null);
+      setIsCloseShiftModalOpen(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to close shift';
+      setCloseShiftError(message);
+    } finally {
+      setIsClosingShift(false);
+    }
   };
 
   const handleOpenShift = async (event: FormEvent<HTMLFormElement>) => {
@@ -908,9 +965,21 @@ export default function POSPage() {
             </div>
             <div className="flex items-center gap-3">
               {currentShift ? (
-                <div className="flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  Shift Open
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                    Shift Open
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openCloseShiftModal();
+                    }}
+                    className="relative z-20 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200 transition hover:border-red-400 hover:text-red-100"
+                  >
+                    Close Shift
+                  </button>
                 </div>
               ) : (
                 <button
@@ -1156,6 +1225,66 @@ export default function POSPage() {
               className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isOpeningShift ? 'Opening...' : 'Open Shift'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isCloseShiftModalOpen}
+        onClose={() => setIsCloseShiftModalOpen(false)}
+        title="Close Shift"
+      >
+        <form className="space-y-4" onSubmit={handleCloseShift}>
+          <p className="text-sm text-slate-400">
+            Enter the final cash amount to close the current shift.
+          </p>
+          <div>
+            <label className="text-sm font-medium text-slate-300">
+              Ending Cash
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={endingCash}
+              onChange={(event) => setEndingCash(event.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-300">
+              Notes (Optional)
+            </label>
+            <textarea
+              value={closingNotes}
+              onChange={(event) => setClosingNotes(event.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              rows={3}
+              placeholder="Any discrepancies or remarks..."
+            />
+          </div>
+          {closeShiftError && (
+            <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {closeShiftError}
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsCloseShiftModalOpen(false)}
+              className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isClosingShift}
+              className="rounded-md bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isClosingShift ? 'Closing...' : 'Close Shift'}
             </button>
           </div>
         </form>
