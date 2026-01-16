@@ -116,27 +116,20 @@ const logSettingsChange = async (
   }
 };
 
-const fetchSettingsRow = async (supabaseClient?: SupabaseClient): Promise<Settings | null> => {
-  const supabase = supabaseClient ?? defaultSupabase;
-  const { data, error } = await supabase
-    .from(TABLES.SETTINGS)
-    .select('*')
-    .eq('id', SETTINGS_SINGLETON_ID)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data as Settings | null;
-};
-
-export const getSettings = async (supabaseClient?: SupabaseClient): Promise<
-  ActionResponse<Settings | null>
-> => {
+export const getSettings = async (
+  supabase: SupabaseClient
+): Promise<ActionResponse<Settings | null>> => {
   try {
-    const settings = await fetchSettingsRow(supabaseClient);
-    return { success: true, data: settings ?? buildDefaultSettings() };
+    const { data, error } = await supabase
+      .from(TABLES.SETTINGS)
+      .select('*')
+      .eq('id', SETTINGS_SINGLETON_ID)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+
+    // Return default settings if no row exists (Singleton pattern)
+    return { success: true, data: data ?? buildDefaultSettings() };
   } catch (error) {
     return {
       success: false,
@@ -146,11 +139,10 @@ export const getSettings = async (supabaseClient?: SupabaseClient): Promise<
 };
 
 export const updateSettings = async (
+  supabase: SupabaseClient,
   data: SettingsUpdate,
-  userId: string,
-  supabaseClient?: SupabaseClient
+  userId: string
 ): Promise<ActionResponse<Settings>> => {
-  const supabase = supabaseClient ?? defaultSupabase;
   try {
     const hasUpdates = Object.values(data).some(
       (value) => typeof value !== 'undefined'
@@ -165,21 +157,19 @@ export const updateSettings = async (
       throw new Error(validationError);
     }
 
-    const payload = {
-      ...data,
-      id: SETTINGS_SINGLETON_ID,
-      updated_at: new Date().toISOString(),
-    };
-
+    // Force ID to 1 (Singleton) and use Upsert
     const { data: updatedSettings, error } = await supabase
       .from(TABLES.SETTINGS)
-      .upsert(payload, { onConflict: 'id' })
-      .select('*')
+      .upsert({
+        id: SETTINGS_SINGLETON_ID,
+        ...data,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
       .single();
 
-    if (error || !updatedSettings) {
-      throw new Error(error?.message ?? 'Failed to update settings');
-    }
+    if (error) throw new Error(error.message);
+    if (!updatedSettings) throw new Error('Failed to update settings');
 
     const changedFields = Object.keys(data).join(', ');
     await logSettingsChange(
@@ -205,10 +195,19 @@ export const initializeSettings = async (
 ): Promise<ActionResponse<Settings>> => {
   const supabase = supabaseClient ?? defaultSupabase;
   try {
-    const existing = await fetchSettingsRow(supabase);
+    // Check if settings already exist
+    const { data: existing } = await getSettings(supabase);
+    // Note: getSettings now returns defaults if not found, but let's check DB directly if we want strict init
+    // However, keeping logic similar to before:
+    
+    const { data: dbRow } = await supabase
+        .from(TABLES.SETTINGS)
+        .select('*')
+        .eq('id', SETTINGS_SINGLETON_ID)
+        .maybeSingle();
 
-    if (existing) {
-      return { success: true, data: existing };
+    if (dbRow) {
+      return { success: true, data: dbRow as Settings };
     }
 
     const validationError = validateSettings(data);

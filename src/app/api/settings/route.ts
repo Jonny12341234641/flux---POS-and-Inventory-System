@@ -171,7 +171,7 @@ export async function PUT(req: Request) {
       );
     }
 
-    const result = await updateSettings(payload, user.id, supabase);
+    const result = await updateSettings(supabase, payload, user.id);
 
     if (!result.success || !result.data) {
       throw new Error(result.error ?? "Failed to update settings");
