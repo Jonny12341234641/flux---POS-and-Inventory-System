@@ -73,11 +73,11 @@ export async function POST(req: Request) {
   try {
     const supabase = await createClient();
     const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (sessionError || !session || !session.user) {
+    if (userError || !user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     const { data: roleData, error: roleError } = await supabase
       .from("users")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (roleError) {
@@ -136,7 +136,7 @@ export async function POST(req: Request) {
       status: "active" as const,
     };
 
-    const result = await createUser(payload, session.user.id);
+    const result = await createUser(payload, user.id);
 
     if (!result.success || !result.data) {
       return NextResponse.json(
