@@ -89,6 +89,7 @@ const SettingsSchema = z
           .min(0, "Low stock threshold must be 0 or higher")
       )
       .optional(),
+    tax_enabled: z.boolean().optional(),
     logo_url: z.preprocess(trimString, z.string().optional()),
   })
   .strict();

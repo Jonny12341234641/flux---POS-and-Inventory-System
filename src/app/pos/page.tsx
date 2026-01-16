@@ -66,6 +66,9 @@ const extractDefaultTaxRate = (data: unknown) => {
     (record.settings as Record<string, unknown> | undefined) ??
     record;
 
+  const isEnabled = payload.tax_enabled ?? payload.taxEnabled ?? true;
+  if (isEnabled === false) return 0;
+
   return parseNumber(
     payload.default_tax_rate ??
       payload.tax_rate ??
@@ -1130,12 +1133,6 @@ export default function POSPage() {
                 <span>Subtotal</span>
                 <span className="text-white">
                   {formatCurrency(cartSummary.subTotal)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax</span>
-                <span className="text-white">
-                  {formatCurrency(cartSummary.tax)}
                 </span>
               </div>
               <div className="flex justify-between text-emerald-400">

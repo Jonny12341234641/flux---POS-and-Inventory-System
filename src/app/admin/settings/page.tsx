@@ -27,6 +27,7 @@ interface SystemSettings {
   receiptFooter: string;
   logoUrl: string;
   taxRate: number;
+  taxEnabled: boolean;
   currency: string;
   lowStockThreshold: number;
 }
@@ -40,6 +41,7 @@ const DEFAULT_SETTINGS: SystemSettings = {
   receiptFooter: "No refunds after 7 days",
   logoUrl: "",
   taxRate: 2.5,
+  taxEnabled: true,
   currency: "LKR",
   lowStockThreshold: 10,
 };
@@ -114,6 +116,10 @@ export default function SettingsPage() {
           payload.logoUrl ?? payload.logo_url,
           DEFAULT_SETTINGS.logoUrl
         ),
+        taxEnabled:
+          payload.taxEnabled ??
+          payload.tax_enabled ??
+          DEFAULT_SETTINGS.taxEnabled,
         taxRate: numberFrom(
           payload.taxRate ?? payload.default_tax_rate,
           DEFAULT_SETTINGS.taxRate
@@ -171,6 +177,7 @@ export default function SettingsPage() {
       receipt_footer: settings.receiptFooter.trim(),
       logo_url: settings.logoUrl.trim(),
       default_tax_rate: settings.taxRate,
+      tax_enabled: settings.taxEnabled,
       currency_symbol: settings.currency.trim(),
       low_stock_threshold: settings.lowStockThreshold,
     };
@@ -394,21 +401,42 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <label
-                  htmlFor="tax-rate"
-                  className="text-sm font-medium text-slate-700"
-                >
-                  Tax Rate (%)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="tax-rate"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    Default Tax Rate (%)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="tax-enabled"
+                      checked={settings.taxEnabled}
+                      onChange={(e) =>
+                        updateSetting("taxEnabled", e.target.checked)
+                      }
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600"
+                    />
+                    <label
+                      htmlFor="tax-enabled"
+                      className="text-xs text-slate-500 cursor-pointer select-none"
+                    >
+                      {settings.taxEnabled ? "On" : "Off"}
+                    </label>
+                  </div>
+                </div>
                 <Input
                   id="tax-rate"
                   type="number"
                   min="0"
                   max="100"
                   step="0.01"
+                  disabled={!settings.taxEnabled}
                   value={settings.taxRate}
                   onChange={handleNumberChange("taxRate")}
                   placeholder="2.5"
+                  className={!settings.taxEnabled ? "opacity-50" : ""}
                 />
               </div>
 

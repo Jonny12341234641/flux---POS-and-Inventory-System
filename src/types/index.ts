@@ -219,6 +219,7 @@ export type Settings = {
     store_email?: string;
     currency_symbol: string;
     default_tax_rate: number;
+    tax_enabled: boolean;
     low_stock_threshold: number;
     receipt_header?: string;
     receipt_footer?: string;

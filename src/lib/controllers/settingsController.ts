@@ -15,6 +15,7 @@ const buildDefaultSettings = (): Settings => ({
   store_phone: '+94 11 234 5678',
   currency_symbol: 'LKR',
   default_tax_rate: 2.5,
+  tax_enabled: true,
   low_stock_threshold: LOW_STOCK_THRESHOLD,
   receipt_footer: 'No refunds after 7 days',
   updated_at: new Date().toISOString(),
@@ -75,6 +76,13 @@ const validateSettings = (data: SettingsUpdate): string | null => {
     if (parsedRate < 0 || parsedRate > 100) {
       return 'Tax rate must be between 0 and 100.';
     }
+  }
+
+  if (
+    typeof data.tax_enabled !== 'undefined' &&
+    typeof data.tax_enabled !== 'boolean'
+  ) {
+    return 'Tax enabled status must be a boolean.';
   }
 
   if (typeof data.low_stock_threshold !== 'undefined') {
