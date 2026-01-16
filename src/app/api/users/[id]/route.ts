@@ -15,9 +15,7 @@ type UpdateUserBody = {
 };
 
 type RouteContext = {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
 };
 
 const ADMIN_ROLE: UserRole = "admin";
@@ -37,16 +35,18 @@ const parseRole = (value: unknown): UserRole | undefined => {
   return undefined;
 };
 
-export async function GET(_req: Request, { params }: RouteContext) {
+export async function GET(req: Request, context: RouteContext) {
   try {
-    if (!params?.id) {
+    const { id } = await context.params;
+
+    if (!id) {
       return NextResponse.json(
         { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }
 
-    const result = await getUserById(params.id);
+    const result = await getUserById(id);
 
     if (!result.success || !result.data) {
       return NextResponse.json(
@@ -67,9 +67,11 @@ export async function GET(_req: Request, { params }: RouteContext) {
   }
 }
 
-export async function PUT(req: Request, { params }: RouteContext) {
+export async function PATCH(req: Request, context: RouteContext) {
   try {
-    if (!params?.id) {
+    const { id } = await context.params;
+
+    if (!id) {
       return NextResponse.json(
         { success: false, error: "User ID is required" },
         { status: 400 }
@@ -132,7 +134,7 @@ export async function PUT(req: Request, { params }: RouteContext) {
       );
     }
 
-    const result = await updateUser(params.id, payload, session.user.id);
+    const result = await updateUser(id, payload, session.user.id);
 
     if (!result.success || !result.data) {
       return NextResponse.json(
@@ -153,9 +155,11 @@ export async function PUT(req: Request, { params }: RouteContext) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: RouteContext) {
+export async function DELETE(req: Request, context: RouteContext) {
   try {
-    if (!params?.id) {
+    const { id } = await context.params;
+
+    if (!id) {
       return NextResponse.json(
         { success: false, error: "User ID is required" },
         { status: 400 }
@@ -195,7 +199,7 @@ export async function DELETE(_req: Request, { params }: RouteContext) {
       );
     }
 
-    const result = await deleteUser(params.id, session.user.id);
+    const result = await deleteUser(id, session.user.id);
 
     if (!result.success || !result.data) {
       return NextResponse.json(
