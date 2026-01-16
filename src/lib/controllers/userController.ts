@@ -206,7 +206,7 @@ export const createUser = async (
       // created_at will be auto-set by DB
     };
 
-    const { data: newUser, error: dbError } = await supabase
+    const { data: newUser, error: dbError } = await supabaseAdmin
       .from(TABLES.USERS)
       .insert(payload)
       .select(PROFILE_SELECT)
