@@ -128,7 +128,7 @@ export default function POSPage() {
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [draftSale, setDraftSale] = useState<Sale | null>(null);
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
-  const [orderNumber, setOrderNumber] = useState(() => generateOrderNumber());
+  const [orderNumber, setOrderNumber] = useState('');
   const [currentShift, setCurrentShift] = useState<ShiftSession | null>(null);
   const [isShiftLoading, setIsShiftLoading] = useState(false);
   const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
@@ -141,6 +141,10 @@ export default function POSPage() {
   const [closingNotes, setClosingNotes] = useState('');
   const [isClosingShift, setIsClosingShift] = useState(false);
   const [closeShiftError, setCloseShiftError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOrderNumber(generateOrderNumber());
+  }, []);
 
   const loadCurrentShift = async (signal?: AbortSignal) => {
     setIsShiftLoading(true);
