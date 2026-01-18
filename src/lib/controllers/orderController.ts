@@ -900,6 +900,23 @@ export const receiveGoods = async (
         );
       }
 
+      // 3. (NEW) CREATE THE BATCH RECORD
+      // This is the "Box" that holds this specific shipment
+      const { error: batchError } = await supabase
+        .from(TABLES.PRODUCT_BATCHES)
+        .insert({
+          product_id: currentProduct.id,
+          quantity_initial: incomingQty,
+          quantity_remaining: incomingQty, // Initially, full amount is available
+          cost_price_at_purchase: incomingCost,
+          expiry_date: receipt.expiry_date ?? null,
+          created_at: new Date().toISOString(),
+        });
+
+      if (batchError) {
+        console.error('Failed to create batch:', batchError.message);
+      }
+
       processed.push({
         product_id: currentProduct.id,
         previous_stock: previousStock,
@@ -912,10 +929,17 @@ export const receiveGoods = async (
       movements.push(movement as StockMovement);
     }
 
+    const totalReceivedByProduct = new Map(receivedTotals);
+    for (const [productId, receivedNow] of receiptTotals.entries()) {
+      totalReceivedByProduct.set(
+        productId,
+        (totalReceivedByProduct.get(productId) ?? 0) + receivedNow
+      );
+    }
+
     const isFullyReceived = purchaseItems.every((item) => {
-      const alreadyReceived = receivedTotals.get(item.product_id) ?? 0;
-      const receivedNow = receiptTotals.get(item.product_id) ?? 0;
-      return alreadyReceived + receivedNow >= item.quantity;
+      const totalReceived = totalReceivedByProduct.get(item.product_id) ?? 0;
+      return totalReceived >= item.quantity;
     });
 
     let updatedOrder = order as PurchaseOrder;
