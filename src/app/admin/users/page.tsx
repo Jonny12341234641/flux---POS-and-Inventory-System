@@ -294,7 +294,7 @@ export default function UsersPage() {
     }
 
     const confirmed = window.confirm(
-      `Remove access for ${user.full_name}? This will deactivate their account.`
+      `Permanently delete ${user.full_name}? This action cannot be undone.`
     );
 
     if (!confirmed) {
@@ -307,8 +307,21 @@ export default function UsersPage() {
       });
 
       if (!response.ok) {
-         const errorData = await response.json();
-         throw new Error(errorData.error || "Failed to remove employee access.");
+        let message = "Failed to delete employee.";
+        const errorText = await response.text();
+        if (errorText) {
+          try {
+            const errorData = JSON.parse(errorText);
+            if (errorData && typeof errorData === "object" && "error" in errorData) {
+              message = String((errorData as { error?: unknown }).error ?? message);
+            } else {
+              message = errorText;
+            }
+          } catch {
+            message = errorText;
+          }
+        }
+        throw new Error(message);
       }
 
       await fetchUsers();
@@ -413,7 +426,7 @@ export default function UsersPage() {
                               className="inline-flex items-center gap-2 text-red-600"
                             >
                               <Trash className="h-4 w-4" />
-                              Deactivate
+                              Delete
                             </Button>
                           )}
                         </div>

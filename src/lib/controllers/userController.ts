@@ -47,6 +47,15 @@ const isDuplicateUsernameError = (error: unknown) => {
   return message.includes('duplicate') || message.includes('unique');
 };
 
+const isForeignKeyViolation = (error: unknown) => {
+  if (!error) {
+    return false;
+  }
+
+  const err = error as SupabaseErrorLike;
+  return err.code === '23503';
+};
+
 const ensureUsernameAvailable = async (username: string) => {
   const { data, error } = await supabase
     .from(TABLES.USERS)
@@ -336,33 +345,39 @@ export const deleteUser = async (
 
     const { data, error } = await supabaseAdmin
       .from(TABLES.USERS)
-      .update({ status: 'inactive' })
+      .delete()
       .eq('id', id)
       .select(PROFILE_SELECT)
       .single();
 
     if (error || !data) {
-      throw new Error(error?.message ?? 'Failed to deactivate user');
+      if (isForeignKeyViolation(error)) {
+        throw new Error(
+          'User cannot be deleted because they have associated records. Deactivate the account instead.'
+        );
+      }
+      throw new Error(error?.message ?? 'Failed to delete user');
     }
 
-    await logUserAction(trimmedActorId, 'USER_DEACTIVATE', {
+    await logUserAction(trimmedActorId, 'USER_DELETE', {
       target_user_id: id,
-      status: 'inactive',
     });
 
-    const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(id);
+    const { error: authError } =
+      await supabaseAdmin.auth.admin.deleteUser(id);
 
-    if (signOutError) {
-      throw new Error(
-        signOutError.message ?? 'Failed to revoke user sessions'
-      );
+    if (authError) {
+      console.warn('Auth cleanup failed after user deletion:', {
+        userId: id,
+        error: authError.message,
+      });
     }
 
     return { success: true, data: data as User };
   } catch (error) {
     return {
       success: false,
-      error: getErrorMessage(error, 'Failed to deactivate user'),
+      error: getErrorMessage(error, 'Failed to delete user'),
     };
   }
 };
