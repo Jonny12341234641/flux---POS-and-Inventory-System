@@ -394,6 +394,24 @@ export const createProduct = async (
       throw new Error(error?.message ?? 'Failed to create product');
     }
 
+    // 2. NEW FIX: If initial stock is added, create the first Batch automatically!
+    const initialStock = Number(payload.stock_quantity);
+    if (initialStock > 0) {
+      const { error: batchError } = await supabase
+        .from(TABLES.PRODUCT_BATCHES)
+        .insert({
+          product_id: product.id,
+          quantity_initial: initialStock,
+          quantity_remaining: initialStock,
+          cost_price_at_purchase: product.cost_price,
+          expiry_date: null,
+        });
+
+      if (batchError) {
+        console.error('Failed to create initial batch:', batchError.message);
+      }
+    }
+
     return { success: true, data: product as Product };
   } catch (error) {
     return {
