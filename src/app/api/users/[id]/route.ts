@@ -80,11 +80,11 @@ export async function PATCH(req: Request, context: RouteContext) {
 
     const supabase = await createClient();
     const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (sessionError || !session || !session.user) {
+    if (userError || !user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -94,7 +94,7 @@ export async function PATCH(req: Request, context: RouteContext) {
     const { data: roleData, error: roleError } = await supabase
       .from("users")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (roleError) {
@@ -134,7 +134,7 @@ export async function PATCH(req: Request, context: RouteContext) {
       );
     }
 
-    const result = await updateUser(id, payload, session.user.id);
+    const result = await updateUser(id, payload, user.id);
 
     if (!result.success || !result.data) {
       return NextResponse.json(
@@ -168,11 +168,11 @@ export async function DELETE(req: Request, context: RouteContext) {
 
     const supabase = await createClient();
     const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (sessionError || !session || !session.user) {
+    if (userError || !user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
@@ -182,7 +182,7 @@ export async function DELETE(req: Request, context: RouteContext) {
     const { data: roleData, error: roleError } = await supabase
       .from("users")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (roleError) {
@@ -199,7 +199,7 @@ export async function DELETE(req: Request, context: RouteContext) {
       );
     }
 
-    const result = await deleteUser(id, session.user.id);
+    const result = await deleteUser(id, user.id);
 
     if (!result.success || !result.data) {
       return NextResponse.json(

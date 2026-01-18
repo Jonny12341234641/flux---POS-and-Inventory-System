@@ -83,7 +83,7 @@ const logUserAction = async (
   details?: Record<string, unknown> | string | null
 ): Promise<void> => {
   try {
-    const { error } = await supabase.from(TABLES.AUDIT_LOGS).insert({
+    const { error } = await supabaseAdmin.from(TABLES.AUDIT_LOGS).insert({
       user_id: actorId,
       action,
       details: normalizeAuditDetails(details ?? null),
@@ -285,7 +285,7 @@ export const updateUser = async (
       payload.full_name = trimmedName;
     }
 
-    const { data: user, error } = await supabase
+    const { data: user, error } = await supabaseAdmin
       .from(TABLES.USERS)
       .update(payload)
       .eq('id', id)
@@ -334,7 +334,7 @@ export const deleteUser = async (
       throw new Error('Actor ID is required');
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from(TABLES.USERS)
       .update({ status: 'inactive' })
       .eq('id', id)
