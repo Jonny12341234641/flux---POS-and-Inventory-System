@@ -343,20 +343,37 @@ export const deleteUser = async (
       throw new Error('Actor ID is required');
     }
 
-    const { data, error } = await supabaseAdmin
-      .from(TABLES.USERS)
-      .delete()
-      .eq('id', id)
-      .select(PROFILE_SELECT)
-      .single();
+    let deletedUser: UserRow | null = null;
 
-    if (error || !data) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from(TABLES.USERS)
+        .delete()
+        .eq('id', id)
+        .select(PROFILE_SELECT)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('Failed to delete user');
+      }
+
+      deletedUser = data as UserRow;
+    } catch (error) {
       if (isForeignKeyViolation(error)) {
         throw new Error(
-          'User cannot be deleted because they have associated records. Deactivate the account instead.'
+          'Cannot delete this user because they have associated records (e.g., Sales). Please deactivate them instead.'
         );
       }
-      throw new Error(error?.message ?? 'Failed to delete user');
+
+      const err = error as SupabaseErrorLike;
+      const message = err?.message?.trim()
+        ? err.message
+        : getErrorMessage(error, 'Failed to delete user');
+      throw new Error(message);
     }
 
     await logUserAction(trimmedActorId, 'USER_DELETE', {
@@ -373,7 +390,7 @@ export const deleteUser = async (
       });
     }
 
-    return { success: true, data: data as User };
+    return { success: true, data: deletedUser as User };
   } catch (error) {
     return {
       success: false,

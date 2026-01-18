@@ -250,7 +250,7 @@ export default function UsersPage() {
     const endpoint = isCreate
       ? "/api/users"
       : `/api/users/${currentUser.id}`;
-    const method = isCreate ? "POST" : "PUT";
+    const method = isCreate ? "POST" : "PATCH";
 
     const payload = isCreate
       ? {
