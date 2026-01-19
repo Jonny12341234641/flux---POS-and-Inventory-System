@@ -24,7 +24,12 @@ import {
 import { Modal } from '../../components/ui/modal';
 import type { CartItem, Customer, Product, Sale, ShiftSession } from '../../types';
 
-type PaymentMethod = 'cash' | 'card';
+type PaymentMethod = 'cash' | 'card' | 'split';
+
+type SplitPaymentsState = {
+  cash: string;
+  card: string;
+};
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -42,6 +47,8 @@ const parseNumber = (value: unknown, fallback = 0) => {
         : Number.NaN;
   return Number.isFinite(parsed) ? parsed : fallback;
 };
+
+const toCents = (value: number) => Math.round(value * 100);
 
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -104,6 +111,11 @@ export default function POSPage() {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [splitPayments, setSplitPayments] = useState<SplitPaymentsState>({
+    cash: '0',
+    card: '0',
+  });
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [defaultTaxRate, setDefaultTaxRate] = useState(0);
 
   const [customerQuery, setCustomerQuery] = useState('');
@@ -359,6 +371,23 @@ export default function POSPage() {
     0
   );
 
+  const splitTotals = useMemo(() => {
+    const cash = parseNumber(splitPayments.cash, 0);
+    const card = parseNumber(splitPayments.card, 0);
+    const cashCents = toCents(cash);
+    const cardCents = toCents(card);
+    const totalCents = cashCents + cardCents;
+    const grandTotalCents = toCents(grandTotal);
+
+    return {
+      cash,
+      card,
+      remaining: (grandTotalCents - totalCents) / 100,
+      isValid:
+        cash >= 0 && card >= 0 && totalCents === grandTotalCents,
+    };
+  }, [splitPayments, grandTotal]);
+
   const handleSelectProduct = (product: Product) => {
     setStagedProduct(product);
     setStagedQuantity('1');
@@ -471,6 +500,34 @@ export default function POSPage() {
     return false;
   };
 
+  const openSplitModal = () => {
+    setPaymentMethod('split');
+    setSplitPayments((prev) => {
+      const cash = parseNumber(prev.cash, 0);
+      const card = parseNumber(prev.card, 0);
+      if (cash === 0 && card === 0) {
+        return {
+          cash: grandTotal.toFixed(2),
+          card: '0',
+        };
+      }
+      return prev;
+    });
+    setIsSplitModalOpen(true);
+  };
+
+  const handleSplitPaymentChange = (
+    field: keyof SplitPaymentsState,
+    value: string
+  ) => {
+    setSplitPayments((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleConfirmSplitPayment = () => {
+    if (!splitTotals.isValid) return;
+    setIsSplitModalOpen(false);
+  };
+
   const openCloseShiftModal = () => {
     setCloseShiftError(null);
     setEndingCash('');
@@ -571,6 +628,12 @@ export default function POSPage() {
     if (!items.length) return;
     if (!ensureOpenShift()) return;
 
+    if (paymentMethod === 'split' && !splitTotals.isValid) {
+      window.alert('Split payments must equal the total due.');
+      setIsSplitModalOpen(true);
+      return;
+    }
+
     setIsCheckingOut(true);
     try {
       const payload = {
@@ -579,6 +642,13 @@ export default function POSPage() {
         amount_paid: grandTotal,
         discount_total: 0,
         customer_id: selectedCustomer?.id ?? null,
+        payments:
+          paymentMethod === 'split'
+            ? [
+                { method: 'cash', amount: splitTotals.cash },
+                { method: 'card', amount: splitTotals.card },
+              ]
+            : undefined,
       };
 
       const res = await fetch('/api/sales', {
@@ -1107,29 +1177,55 @@ export default function POSPage() {
           </div>
 
           <div className="relative z-10 border-t border-slate-800 bg-slate-900/80 p-5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.6)]">
-            <div className="mb-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('cash')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                  paymentMethod === 'cash'
-                    ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300'
-                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                Cash
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('card')}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                  paymentMethod === 'card'
-                    ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300'
-                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                Card
-              </button>
+            <div className="mb-4 space-y-2">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('cash')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                    paymentMethod === 'cash'
+                      ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300'
+                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  Cash
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('card')}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                    paymentMethod === 'card'
+                      ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300'
+                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  Card
+                </button>
+                <button
+                  type="button"
+                  onClick={openSplitModal}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                    paymentMethod === 'split'
+                      ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300'
+                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  Split
+                </button>
+              </div>
+              {paymentMethod === 'split' && (
+                <div className="text-xs text-slate-400">
+                  Paying:{' '}
+                  <span className="font-semibold text-white">
+                    {formatCurrency(splitTotals.cash)}
+                  </span>{' '}
+                  Cash /{' '}
+                  <span className="font-semibold text-white">
+                    {formatCurrency(splitTotals.card)}
+                  </span>{' '}
+                  Card
+                </div>
+              )}
             </div>
 
             <div className="space-y-2 text-sm text-slate-300">
@@ -1182,6 +1278,81 @@ export default function POSPage() {
           </div>
         </section>
       </div>
+
+      <Modal
+        isOpen={isSplitModalOpen}
+        onClose={() => setIsSplitModalOpen(false)}
+        title="Split Payment"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">
+            Split the total due between cash and card.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium text-slate-300">
+                Cash Amount
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                value={splitPayments.cash}
+                onChange={(event) =>
+                  handleSplitPaymentChange('cash', event.target.value)
+                }
+                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-300">
+                Card Amount
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                value={splitPayments.card}
+                onChange={(event) =>
+                  handleSplitPaymentChange('card', event.target.value)
+                }
+                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm">
+            <span className="text-slate-400">Remaining Due</span>
+            <span
+              className={`font-semibold ${
+                splitTotals.isValid
+                  ? 'text-emerald-300'
+                  : 'text-slate-100'
+              }`}
+            >
+              {formatCurrency(splitTotals.remaining)}
+            </span>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsSplitModalOpen(false)}
+              className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSplitPayment}
+              disabled={!splitTotals.isValid}
+              className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={isClockInModalOpen}
