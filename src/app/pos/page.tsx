@@ -1,35 +1,21 @@
-
 'use client';
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import Barcode from 'react-barcode';
-import {
-  ArrowRight,
-  Plus,
-  Save,
-  ScanLine,
-  Search,
-  Trash2,
-  UserPlus,
-  UserSearch,
-  X,
-} from 'lucide-react';
+import { Search } from 'lucide-react';
 
+import { ClockInModal } from '../../components/pos/ClockInModal';
+import { ProductCard } from '../../components/pos/ProductCard';
+import { PosCart } from '../../components/pos/PosCart';
 import { Modal } from '../../components/ui/modal';
-import type { CartItem, Customer, Product, Sale, ShiftSession } from '../../types';
-
-type PaymentMethod = 'cash' | 'card' | 'split';
-
-type SplitPaymentsState = {
-  cash: string;
-  card: string;
-};
+import type {
+  CartItem,
+  Category,
+  Customer,
+  Product,
+  Sale,
+  ShiftSession,
+} from '../../types';
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -47,8 +33,6 @@ const parseNumber = (value: unknown, fallback = 0) => {
         : Number.NaN;
   return Number.isFinite(parsed) ? parsed : fallback;
 };
-
-const toCents = (value: number) => Math.round(value * 100);
 
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -85,37 +69,39 @@ const extractDefaultTaxRate = (data: unknown) => {
   );
 };
 
-const generateOrderNumber = () => {
-  const year = new Date().getFullYear();
-  const suffix = Math.floor(Math.random() * 9000 + 1000);
-  return `ORD-${year}-${suffix}`;
-};
+const extractList = <T,>(data: unknown): T[] => {
+  if (Array.isArray(data)) {
+    return data as T[];
+  }
 
-const getInitials = (name: string) =>
-  name
-    .split(' ')
-    .map((part) => part.trim()[0])
-    .filter(Boolean)
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  if (data && typeof data === 'object') {
+    const record = data as Record<string, unknown>;
+    if (Array.isArray(record.data)) {
+      return record.data as T[];
+    }
+    if (Array.isArray(record.products)) {
+      return record.products as T[];
+    }
+    if (Array.isArray(record.categories)) {
+      return record.categories as T[];
+    }
+    if (Array.isArray(record.customers)) {
+      return record.customers as T[];
+    }
+  }
+
+  return [];
+};
 
 export default function POSPage() {
   const [productQuery, setProductQuery] = useState('');
-  const [productResults, setProductResults] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isProductLoading, setIsProductLoading] = useState(false);
 
-  const [stagedProduct, setStagedProduct] = useState<Product | null>(null);
-  const [stagedQuantity, setStagedQuantity] = useState('1');
-  const quantityInputRef = useRef<HTMLInputElement>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [activeCategoryId, setActiveCategoryId] = useState('all');
 
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
-  const [splitPayments, setSplitPayments] = useState<SplitPaymentsState>({
-    cash: '0',
-    card: '0',
-  });
-  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [defaultTaxRate, setDefaultTaxRate] = useState(0);
 
   const [customerQuery, setCustomerQuery] = useState('');
@@ -136,17 +122,10 @@ export default function POSPage() {
     address: '',
   });
 
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
-  const [draftSale, setDraftSale] = useState<Sale | null>(null);
-  const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
-  const [orderNumber, setOrderNumber] = useState('');
   const [currentShift, setCurrentShift] = useState<ShiftSession | null>(null);
   const [isShiftLoading, setIsShiftLoading] = useState(false);
   const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
   const [isOpeningShift, setIsOpeningShift] = useState(false);
-  const [startingCash, setStartingCash] = useState('0');
-  const [shiftError, setShiftError] = useState<string | null>(null);
 
   const [isCloseShiftModalOpen, setIsCloseShiftModalOpen] = useState(false);
   const [endingCash, setEndingCash] = useState('');
@@ -154,9 +133,10 @@ export default function POSPage() {
   const [isClosingShift, setIsClosingShift] = useState(false);
   const [closeShiftError, setCloseShiftError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setOrderNumber(generateOrderNumber());
-  }, []);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftSale, setDraftSale] = useState<Sale | null>(null);
+  const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
 
   const loadCurrentShift = async (signal?: AbortSignal) => {
     setIsShiftLoading(true);
@@ -186,13 +166,6 @@ export default function POSPage() {
       }
     }
   };
-
-  useEffect(() => {
-    if (stagedProduct && quantityInputRef.current) {
-      quantityInputRef.current.focus();
-      quantityInputRef.current.select();
-    }
-  }, [stagedProduct]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -230,42 +203,82 @@ export default function POSPage() {
   }, []);
 
   useEffect(() => {
-    const trimmed = productQuery.trim();
-    if (!trimmed) {
-      setProductResults([]);
-      return;
+    if (!currentShift && !isShiftLoading) {
+      setIsClockInModalOpen(true);
     }
+  }, [currentShift, isShiftLoading]);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(async () => {
-      setIsProductLoading(true);
-      try {
-        const params = new URLSearchParams({
-          page: '1',
-          query: trimmed,
-        });
-        const response = await fetch(
-          `/api/inventory/products?${params.toString()}`,
-          { signal: controller.signal }
-        );
+  const fetchCategories = async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch('/api/inventory/categories', {
+        cache: 'no-store',
+        signal,
+      });
 
-        if (!response.ok) {
-          throw new Error('Failed to load products');
-        }
+      if (!response.ok) {
+        throw new Error('Failed to load categories');
+      }
 
-        const data = await response.json();
-        const list = Array.isArray(data) ? data : data.data || [];
-        const sorted = [...list].sort((a: Product, b: Product) =>
-          a.name.localeCompare(b.name)
-        );
-        setProductResults(sorted);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        console.error('Failed to load products', error);
-        setProductResults([]);
-      } finally {
+      const data = await response.json();
+      if (!signal?.aborted) {
+        setCategories(extractList<Category>(data));
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      console.error('Failed to load categories', error);
+      if (!signal?.aborted) {
+        setCategories([]);
+      }
+    }
+  };
+
+  const fetchProducts = async (signal?: AbortSignal) => {
+    setIsProductLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: '1',
+        query: productQuery.trim(),
+      });
+
+      const response = await fetch(
+        `/api/inventory/products?${params.toString()}`,
+        { signal }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to load products');
+      }
+
+      const data = await response.json();
+      const list = extractList<Product>(data);
+      const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name));
+      if (!signal?.aborted) {
+        setProducts(sorted);
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      console.error('Failed to load products', error);
+      if (!signal?.aborted) {
+        setProducts([]);
+      }
+    } finally {
+      if (!signal?.aborted) {
         setIsProductLoading(false);
       }
+    }
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchCategories(controller.signal);
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      fetchProducts(controller.signal);
     }, 250);
 
     return () => {
@@ -278,6 +291,7 @@ export default function POSPage() {
     const trimmed = customerQuery.trim();
     if (!trimmed) {
       setCustomerResults([]);
+      setIsCustomerLoading(false);
       return;
     }
 
@@ -299,17 +313,23 @@ export default function POSPage() {
         }
 
         const data = await response.json();
-        const list = Array.isArray(data) ? data : data.data || [];
-        const sorted = [...list].sort((a: Customer, b: Customer) =>
+        const list = extractList<Customer>(data);
+        const sorted = [...list].sort((a, b) =>
           a.name.localeCompare(b.name)
         );
-        setCustomerResults(sorted);
+        if (!controller.signal.aborted) {
+          setCustomerResults(sorted);
+        }
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
         console.error('Failed to search customers', error);
-        setCustomerResults([]);
+        if (!controller.signal.aborted) {
+          setCustomerResults([]);
+        }
       } finally {
-        setIsCustomerLoading(false);
+        if (!controller.signal.aborted) {
+          setIsCustomerLoading(false);
+        }
       }
     }, 250);
 
@@ -318,6 +338,30 @@ export default function POSPage() {
       controller.abort();
     };
   }, [customerQuery]);
+
+  const filteredProducts = useMemo(() => {
+    const trimmedQuery = productQuery.trim().toLowerCase();
+
+    return products.filter((product) => {
+      const matchesCategory =
+        activeCategoryId === 'all' || product.category_id === activeCategoryId;
+
+      if (!matchesCategory) {
+        return false;
+      }
+
+      if (!trimmedQuery) {
+        return true;
+      }
+
+      const nameMatch = product.name.toLowerCase().includes(trimmedQuery);
+      const barcodeMatch = product.barcode
+        ? product.barcode.toLowerCase().includes(trimmedQuery)
+        : false;
+
+      return nameMatch || barcodeMatch;
+    });
+  }, [products, activeCategoryId, productQuery]);
 
   const calculateLine = (item: CartItem) => {
     const quantity = parseNumber(item.quantity, 0);
@@ -371,90 +415,41 @@ export default function POSPage() {
     0
   );
 
-  const splitTotals = useMemo(() => {
-    const cash = parseNumber(splitPayments.cash, 0);
-    const card = parseNumber(splitPayments.card, 0);
-    const cashCents = toCents(cash);
-    const cardCents = toCents(card);
-    const totalCents = cashCents + cardCents;
-    const grandTotalCents = toCents(grandTotal);
-
-    return {
-      cash,
-      card,
-      remaining: (grandTotalCents - totalCents) / 100,
-      isValid:
-        cash >= 0 && card >= 0 && totalCents === grandTotalCents,
-    };
-  }, [splitPayments, grandTotal]);
-
   const handleSelectProduct = (product: Product) => {
-    setStagedProduct(product);
-    setStagedQuantity('1');
-    setProductQuery('');
-    setProductResults([]);
-  };
-
-  const commitStagedItem = () => {
-    if (!stagedProduct) return;
-
-    const quantity = parseNumber(stagedQuantity, 0);
-    if (quantity <= 0) {
-      return;
-    }
-
     setCart((prev) => {
-      const existing = prev.find(
-        (item) => item.product.id === stagedProduct.id
-      );
+      const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
         return prev.map((item) =>
-          item.product.id === stagedProduct.id
-            ? { ...item, quantity: item.quantity + quantity }
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
 
       return [
         ...prev,
-        { product: stagedProduct, quantity, discount_percent: 0 },
+        { product, quantity: 1, discount_percent: 0 },
       ];
     });
-
-    setStagedProduct(null);
-    setStagedQuantity('1');
   };
 
   const handleRemoveFromCart = (productId: string) => {
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
   };
 
-  const handleQuantityChange = (productId: string, value: string) => {
-    const parsed = parseNumber(value, 0);
+  const handleUpdateQuantity = (productId: string, quantity: number) => {
     setCart((prev) =>
-      prev.map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity: parsed }
-          : item
-      )
-    );
-  };
+      prev.flatMap((item) => {
+        if (item.product.id !== productId) {
+          return item;
+        }
 
-  const handleQuantityBlur = (productId: string, value: string) => {
-    const parsed = parseNumber(value, 0);
-    if (parsed <= 0) {
-      handleRemoveFromCart(productId);
-    }
-  };
+        if (quantity <= 0) {
+          return [];
+        }
 
-  const handleDiscountChange = (productId: string, value: string) => {
-    const parsed = clampNumber(parseNumber(value, 0), 0, 100);
-    setCart((prev) =>
-      prev.map((item) =>
-        item.product.id === productId
-          ? { ...item, discount_percent: parsed }
-          : item
-      )
+        return [{ ...item, quantity }];
+      })
     );
   };
 
@@ -464,263 +459,15 @@ export default function POSPage() {
     setCustomerResults([]);
   };
 
-  const buildSaleItems = () =>
-    cart
-      .map((item) => {
-        const { quantity, unitPrice, discountAmount, taxAmount } =
-          calculateLine(item);
-
-        return {
-          product_id: item.product.id,
-          quantity,
-          unit_price: unitPrice,
-          discount: discountAmount,
-          tax_amount: taxAmount,
-        };
-      })
-      .filter((item) => item.quantity > 0);
-
-  const openClockInModal = () => {
-    setShiftError(null);
-    setIsClockInModalOpen(true);
+  const clearCustomer = () => {
+    setSelectedCustomer(null);
+    setCustomerQuery('');
+    setCustomerResults([]);
   };
 
-  const closeClockInModal = () => {
-    setIsClockInModalOpen(false);
-    setShiftError(null);
-  };
-
-  const ensureOpenShift = () => {
-    if (currentShift) {
-      return true;
-    }
-
-    setShiftError('No open shift found. Please clock in.');
-    setIsClockInModalOpen(true);
-    return false;
-  };
-
-  const openSplitModal = () => {
-    setPaymentMethod('split');
-    setSplitPayments((prev) => {
-      const cash = parseNumber(prev.cash, 0);
-      const card = parseNumber(prev.card, 0);
-      if (cash === 0 && card === 0) {
-        return {
-          cash: grandTotal.toFixed(2),
-          card: '0',
-        };
-      }
-      return prev;
-    });
-    setIsSplitModalOpen(true);
-  };
-
-  const handleSplitPaymentChange = (
-    field: keyof SplitPaymentsState,
-    value: string
-  ) => {
-    setSplitPayments((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleConfirmSplitPayment = () => {
-    if (!splitTotals.isValid) return;
-    setIsSplitModalOpen(false);
-  };
-
-  const openCloseShiftModal = () => {
-    setCloseShiftError(null);
-    setEndingCash('');
-    setClosingNotes('');
-    setIsCloseShiftModalOpen(true);
-  };
-
-  const handleCloseShift = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setCloseShiftError(null);
-
-    if (!currentShift) return;
-
-    const parsedEndingCash = parseNumber(endingCash, Number.NaN);
-    if (!Number.isFinite(parsedEndingCash) || parsedEndingCash < 0) {
-      setCloseShiftError('Ending cash must be a non-negative number.');
-      return;
-    }
-
-    setIsClosingShift(true);
-    try {
-      const res = await fetch(`/api/shifts/${currentShift.id}/close`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ending_cash: parsedEndingCash,
-          notes: closingNotes.trim() || undefined,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to close shift');
-      }
-
-      window.alert('Shift closed successfully');
-      setCurrentShift(null);
-      setCart([]);
-      setSelectedCustomer(null);
-      setStagedProduct(null);
-      setIsCloseShiftModalOpen(false);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to close shift';
-      setCloseShiftError(message);
-    } finally {
-      setIsClosingShift(false);
-    }
-  };
-
-  const handleOpenShift = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setShiftError(null);
-
-    const parsedStartingCash = parseNumber(startingCash, Number.NaN);
-    if (!Number.isFinite(parsedStartingCash) || parsedStartingCash < 0) {
-      setShiftError('Starting cash must be a non-negative number.');
-      return;
-    }
-
-    setIsOpeningShift(true);
-    try {
-      const res = await fetch('/api/shifts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ starting_cash: parsedStartingCash }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to open shift');
-      }
-
-      setCurrentShift((data?.data as ShiftSession | null) ?? null);
-      closeClockInModal();
-      setStartingCash('0');
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to open shift';
-      setShiftError(message);
-
-      if (
-        message.toLowerCase().includes('open shift') &&
-        message.toLowerCase().includes('already')
-      ) {
-        await loadCurrentShift();
-        closeClockInModal();
-      }
-    } finally {
-      setIsOpeningShift(false);
-    }
-  };
-
-  const handleCheckout = async () => {
-    const items = buildSaleItems();
-    if (!items.length) return;
-    if (!ensureOpenShift()) return;
-
-    if (paymentMethod === 'split' && !splitTotals.isValid) {
-      window.alert('Split payments must equal the total due.');
-      setIsSplitModalOpen(true);
-      return;
-    }
-
-    setIsCheckingOut(true);
-    try {
-      const payload = {
-        items,
-        payment_method: paymentMethod,
-        amount_paid: grandTotal,
-        discount_total: 0,
-        customer_id: selectedCustomer?.id ?? null,
-        payments:
-          paymentMethod === 'split'
-            ? [
-                { method: 'cash', amount: splitTotals.cash },
-                { method: 'card', amount: splitTotals.card },
-              ]
-            : undefined,
-      };
-
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Checkout failed');
-      }
-
-      window.alert('Sale processed successfully!');
-      setCart([]);
-      setSelectedCustomer(null);
-      setStagedProduct(null);
-      setOrderNumber(generateOrderNumber());
-    } catch (error) {
-      console.error(error);
-      const message =
-        error instanceof Error ? error.message : 'Checkout failed';
-      if (message.toLowerCase().includes('no open shift')) {
-        setShiftError(message);
-        setIsClockInModalOpen(true);
-        return;
-      }
-      window.alert(message);
-    } finally {
-      setIsCheckingOut(false);
-    }
-  };
-
-  const handleSaveDraft = async () => {
-    const items = buildSaleItems();
-    if (!items.length) return;
-
-    setIsSavingDraft(true);
-    try {
-      const payload = {
-        items,
-        payment_method: paymentMethod,
-        amount_paid: grandTotal,
-        discount_total: 0,
-        customer_id: selectedCustomer?.id ?? null,
-        status: 'draft',
-      };
-
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Draft save failed');
-      }
-
-      const draft = (await res.json()) as Sale;
-      setDraftSale(draft);
-      setIsDraftModalOpen(true);
-      setCart([]);
-      setSelectedCustomer(null);
-      setStagedProduct(null);
-      setOrderNumber(generateOrderNumber());
-    } catch (error) {
-      console.error(error);
-      window.alert(error instanceof Error ? error.message : 'Draft save failed');
-    } finally {
-      setIsSavingDraft(false);
-    }
+  const openCustomerModal = () => {
+    setCustomerSaveError(null);
+    setIsCustomerModalOpen(true);
   };
 
   const handleCreateCustomer = async (event: FormEvent<HTMLFormElement>) => {
@@ -774,633 +521,343 @@ export default function POSPage() {
     }
   };
 
-  const openCustomerModal = () => {
-    setCustomerSaveError(null);
-    setIsCustomerModalOpen(true);
+  const buildSaleItems = () =>
+    cart
+      .map((item) => {
+        const { quantity, unitPrice, discountAmount, taxAmount } =
+          calculateLine(item);
+
+        return {
+          product_id: item.product.id,
+          quantity,
+          unit_price: unitPrice,
+          discount: discountAmount,
+          tax_amount: taxAmount,
+        };
+      })
+      .filter((item) => item.quantity > 0);
+
+  const openCloseShiftModal = () => {
+    setCloseShiftError(null);
+    setEndingCash('');
+    setClosingNotes('');
+    setIsCloseShiftModalOpen(true);
   };
 
-  const clearStaging = () => {
-    setStagedProduct(null);
-    setStagedQuantity('1');
+  const handleCloseShift = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCloseShiftError(null);
+
+    if (!currentShift) return;
+
+    const parsedEndingCash = parseNumber(endingCash, Number.NaN);
+    if (!Number.isFinite(parsedEndingCash) || parsedEndingCash < 0) {
+      setCloseShiftError('Ending cash must be a non-negative number.');
+      return;
+    }
+
+    setIsClosingShift(true);
+    try {
+      const res = await fetch(`/api/shifts/${currentShift.id}/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ending_cash: parsedEndingCash,
+          notes: closingNotes.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to close shift');
+      }
+
+      window.alert('Shift closed successfully');
+      setCurrentShift(null);
+      setCart([]);
+      setSelectedCustomer(null);
+      setCustomerQuery('');
+      setCustomerResults([]);
+      setIsCloseShiftModalOpen(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to close shift';
+      setCloseShiftError(message);
+    } finally {
+      setIsClosingShift(false);
+    }
   };
 
-  const clearCustomer = () => {
-    setSelectedCustomer(null);
+  const handleOpenShift = async (startingCash: number) => {
+    const parsedStartingCash = parseNumber(startingCash, Number.NaN);
+    if (!Number.isFinite(parsedStartingCash) || parsedStartingCash < 0) {
+      throw new Error('Starting cash must be a non-negative number.');
+    }
+
+    setIsOpeningShift(true);
+    try {
+      const res = await fetch('/api/shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ starting_cash: parsedStartingCash }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to open shift');
+      }
+
+      setCurrentShift((data?.data as ShiftSession | null) ?? null);
+      setIsClockInModalOpen(false);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to open shift';
+
+      if (
+        message.toLowerCase().includes('open shift') &&
+        message.toLowerCase().includes('already')
+      ) {
+        await loadCurrentShift();
+        setIsClockInModalOpen(false);
+        return;
+      }
+
+      throw new Error(message);
+    } finally {
+      setIsOpeningShift(false);
+    }
   };
 
-  const stagedSubtotal = stagedProduct
-    ? parseNumber(stagedQuantity, 0) * parseNumber(stagedProduct.price, 0)
-    : 0;
+  const ensureOpenShift = () => {
+    if (currentShift) {
+      return true;
+    }
+
+    setIsClockInModalOpen(true);
+    return false;
+  };
+
+  const handleCheckout = async () => {
+    if (isCheckingOut || isSavingDraft) return;
+
+    const items = buildSaleItems();
+    if (!items.length) return;
+    if (!ensureOpenShift()) return;
+
+    setIsCheckingOut(true);
+    try {
+      const payload = {
+        items,
+        payment_method: 'cash',
+        amount_paid: grandTotal,
+        discount_total: 0,
+        customer_id: selectedCustomer?.id ?? null,
+      };
+
+      const res = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Checkout failed');
+      }
+
+      window.alert('Sale processed successfully!');
+      setCart([]);
+      setSelectedCustomer(null);
+      setCustomerQuery('');
+      setCustomerResults([]);
+    } catch (error) {
+      console.error(error);
+      const message =
+        error instanceof Error ? error.message : 'Checkout failed';
+      if (message.toLowerCase().includes('no open shift')) {
+        setIsClockInModalOpen(true);
+        return;
+      }
+      window.alert(message);
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (isSavingDraft || isCheckingOut) return;
+
+    const items = buildSaleItems();
+    if (!items.length) return;
+
+    setIsSavingDraft(true);
+    try {
+      const payload = {
+        items,
+        payment_method: 'cash',
+        amount_paid: grandTotal,
+        discount_total: 0,
+        customer_id: selectedCustomer?.id ?? null,
+        status: 'draft',
+      };
+
+      const res = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Draft save failed');
+      }
+
+      const draft = (await res.json()) as Sale;
+      setDraftSale(draft);
+      setIsDraftModalOpen(true);
+      setCart([]);
+      setSelectedCustomer(null);
+      setCustomerQuery('');
+      setCustomerResults([]);
+    } catch (error) {
+      console.error(error);
+      window.alert(error instanceof Error ? error.message : 'Draft save failed');
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
 
   const barcodeValue = draftSale?.receipt_number || draftSale?.id;
+  const categoryTabs = useMemo(
+    () => [{ id: 'all', name: 'All' }, ...categories],
+    [categories]
+  );
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="flex h-screen flex-col overflow-hidden lg:flex-row">
-        <section className="flex w-full flex-col border-r border-slate-800 bg-slate-950 lg:w-5/12 xl:w-1/3">
-          <div className="flex h-full flex-col gap-6 overflow-y-auto p-5">
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  Product Search
-                </label>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
-                  Advanced Filter
-                </span>
-              </div>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Scan barcode or type product name..."
-                  className="w-full rounded-xl border border-slate-800 bg-slate-900/70 py-3 pl-10 pr-10 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                  value={productQuery}
-                  onChange={(event) => setProductQuery(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-100"
-                  aria-label="Scan barcode"
-                >
-                  <ScanLine className="h-4 w-4" />
-                </button>
-                {productQuery.trim().length > 0 && (
-                  <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-xl">
-                    {isProductLoading ? (
-                      <div className="px-4 py-3 text-sm text-slate-400">
-                        Searching products...
-                      </div>
-                    ) : productResults.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-slate-400">
-                        No products found.
-                      </div>
-                    ) : (
-                      productResults.map((product) => (
-                        <button
-                          key={product.id}
-                          type="button"
-                          onClick={() => handleSelectProduct(product)}
-                          className="flex w-full items-center justify-between gap-4 border-b border-slate-800 px-4 py-3 text-left text-sm transition hover:bg-slate-900"
-                        >
-                          <div>
-                            <div className="font-semibold text-slate-100">
-                              {product.name}
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              Stock: {product.stock_quantity}
-                            </div>
-                          </div>
-                          <div className="text-sm font-semibold text-emerald-400">
-                            {formatCurrency(parseNumber(product.price, 0))}
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+      <ClockInModal
+        isOpen={isClockInModalOpen}
+        onClockIn={handleOpenShift}
+        loading={isOpeningShift}
+        onClose={() => setIsClockInModalOpen(false)}
+      />
 
-            {stagedProduct ? (
-              <div className="relative overflow-hidden rounded-2xl border border-emerald-500/40 bg-slate-900/70 p-5 shadow-[0_0_30px_-15px_rgba(16,185,129,0.6)]">
-                <div className="absolute left-0 top-0 h-full w-1.5 bg-emerald-500" />
-                <div className="pl-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">
-                        {stagedProduct.name}
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        Stock: {stagedProduct.stock_quantity}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-emerald-400">
-                        {formatCurrency(parseNumber(stagedProduct.price, 0))}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        per {stagedProduct.unit || 'unit'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-5 gap-3">
-                    <div className="col-span-2">
-                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Quantity
-                      </label>
-                      <input
-                        ref={quantityInputRef}
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step="0.01"
-                        className="w-full rounded-lg border-2 border-emerald-400 bg-slate-950 px-3 py-2 text-center text-xl font-semibold text-white focus:outline-none"
-                        value={stagedQuantity}
-                        onChange={(event) =>
-                          setStagedQuantity(event.target.value)
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.preventDefault();
-                            commitStagedItem();
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="col-span-3">
-                      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Subtotal
-                      </label>
-                      <div className="flex h-[50px] items-center justify-end rounded-lg border border-slate-800 bg-slate-950 px-4 text-xl font-semibold text-slate-200">
-                        {formatCurrency(stagedSubtotal)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={commitStagedItem}
-                      className="flex-1 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
-                    >
-                      <span className="inline-flex items-center justify-center gap-2">
-                        <Plus className="h-4 w-4" /> Add Item
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={clearStaging}
-                      className="rounded-xl border border-slate-800 bg-slate-900 px-4 text-slate-400 transition hover:border-red-500/40 hover:text-red-400"
-                      aria-label="Clear staged product"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 px-5 py-10 text-center text-sm text-slate-500">
-                Select a product from the search results to stage it here.
-              </div>
-            )}
-
-            <div className="mt-auto">
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Customer
-              </label>
-              <div className="relative">
-                <UserSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search by name, phone or email..."
-                  className="w-full rounded-xl border border-slate-800 bg-slate-900/70 py-3 pl-10 pr-12 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                  value={customerQuery}
-                  onChange={(event) => setCustomerQuery(event.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={openCustomerModal}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-slate-800 bg-slate-900 p-1.5 text-slate-400 transition hover:text-white"
-                  aria-label="Add customer"
-                >
-                  <UserPlus className="h-4 w-4" />
-                </button>
-                {customerQuery.trim().length > 0 && (
-                  <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-xl">
-                    {isCustomerLoading ? (
-                      <div className="px-4 py-3 text-sm text-slate-400">
-                        Searching customers...
-                      </div>
-                    ) : customerResults.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-slate-400">
-                        No customers found.
-                      </div>
-                    ) : (
-                      customerResults.map((customer) => (
-                        <button
-                          key={customer.id}
-                          type="button"
-                          onClick={() => handleSelectCustomer(customer)}
-                          className="flex w-full items-center justify-between gap-4 border-b border-slate-800 px-4 py-3 text-left text-sm transition hover:bg-slate-900"
-                        >
-                          <div>
-                            <div className="font-semibold text-slate-100">
-                              {customer.name}
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              {customer.phone}
-                            </div>
-                          </div>
-                          <div className="text-xs text-emerald-400">
-                            {customer.loyalty_points} pts
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {selectedCustomer && (
-                <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-xs font-semibold text-white">
-                    {getInitials(selectedCustomer.name)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-white">
-                      {selectedCustomer.name}
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      {selectedCustomer.phone}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={clearCustomer}
-                    className="rounded-full p-1 text-slate-400 transition hover:text-red-400"
-                    aria-label="Remove customer"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="relative flex flex-1 flex-col bg-slate-950">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#1f2937_1px,transparent_1px)] opacity-40 [background-size:18px_18px]" />
-          <div className="relative z-10 flex items-center justify-between border-b border-slate-800 bg-slate-900/70 p-4">
-            <div className="flex items-center gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-white">
-                  Current Order
-                </h2>
-                <span className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-                  {orderNumber}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {currentShift ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                    Shift Open
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openCloseShiftModal();
-                    }}
-                    className="relative z-20 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200 transition hover:border-red-400 hover:text-red-100"
-                  >
-                    Close Shift
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={openClockInModal}
-                  disabled={isShiftLoading}
-                  className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200 transition hover:border-emerald-400 hover:text-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isShiftLoading ? 'Checking...' : 'Clock In'}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setCart([])}
-                className="flex items-center gap-2 rounded-lg border border-slate-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-400 transition hover:border-red-500/40 hover:text-red-300"
-              >
-                <Trash2 className="h-4 w-4" /> Clear
-              </button>
-            </div>
-          </div>
-
-          <div className="relative z-10 flex-1 space-y-3 overflow-y-auto p-4">
-            {cart.length === 0 ? (
-              <div className="mt-10 text-center text-sm text-slate-500">
-                Cart is empty.
-              </div>
-            ) : (
-              cart.map((item) => {
-                const line = calculateLine(item);
-                return (
-                  <div
-                    key={item.product.id}
-                    className="group rounded-xl border border-slate-800 bg-slate-900/70 p-4 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-semibold text-white">
-                          {item.product.name}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {formatCurrency(line.unitPrice)} per{' '}
-                          {item.product.unit || 'unit'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-white">
-                          {formatCurrency(line.taxableAmount)}
-                        </p>
-                        {line.discountAmount > 0 && (
-                          <p className="text-xs text-emerald-400">
-                            -{formatCurrency(line.discountAmount)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          inputMode="decimal"
-                          className="w-20 rounded-lg border border-slate-800 bg-slate-950 px-2 py-1 text-center text-sm font-semibold text-white focus:border-emerald-400 focus:outline-none"
-                          value={item.quantity}
-                          onChange={(event) =>
-                            handleQuantityChange(
-                              item.product.id,
-                              event.target.value
-                            )
-                          }
-                          onBlur={(event) =>
-                            handleQuantityBlur(
-                              item.product.id,
-                              event.target.value
-                            )
-                          }
-                        />
-                        <span className="text-xs text-slate-500">
-                          {item.product.unit || 'qty'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                          Disc.
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            inputMode="decimal"
-                            className="w-16 rounded-lg border border-slate-800 bg-slate-950 px-2 py-1 text-right text-sm text-white focus:border-emerald-400 focus:outline-none"
-                            value={line.discountPercent}
-                            onChange={(event) =>
-                              handleDiscountChange(
-                                item.product.id,
-                                event.target.value
-                              )
-                            }
-                          />
-                          <span className="text-xs text-slate-500">%</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFromCart(item.product.id)}
-                        className="rounded-lg border border-slate-800 px-2 py-1 text-slate-500 transition hover:border-red-500/50 hover:text-red-400"
-                        aria-label={`Remove ${item.product.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="relative z-10 border-t border-slate-800 bg-slate-900/80 p-5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.6)]">
-            <div className="mb-4 space-y-2">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('cash')}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                    paymentMethod === 'cash'
-                      ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
-                  }`}
-                >
-                  Cash
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('card')}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                    paymentMethod === 'card'
-                      ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
-                  }`}
-                >
-                  Card
-                </button>
-                <button
-                  type="button"
-                  onClick={openSplitModal}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
-                    paymentMethod === 'split'
-                      ? 'border-emerald-400 bg-emerald-500/10 text-emerald-300'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
-                  }`}
-                >
-                  Split
-                </button>
-              </div>
-              {paymentMethod === 'split' && (
-                <div className="text-xs text-slate-400">
-                  Paying:{' '}
-                  <span className="font-semibold text-white">
-                    {formatCurrency(splitTotals.cash)}
-                  </span>{' '}
-                  Cash /{' '}
-                  <span className="font-semibold text-white">
-                    {formatCurrency(splitTotals.card)}
-                  </span>{' '}
-                  Card
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2 text-sm text-slate-300">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span className="text-white">
-                  {formatCurrency(cartSummary.subTotal)}
-                </span>
-              </div>
-              <div className="flex justify-between text-emerald-400">
-                <span>Savings</span>
-                <span>-{formatCurrency(cartSummary.discount)}</span>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-end justify-between border-t border-dashed border-slate-800 pt-4">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-                  Total Due
-                </div>
-                <div className="text-sm text-slate-500">
-                  {cartSummary.itemCount} Items
-                </div>
-              </div>
-              <div className="text-3xl font-bold text-white">
-                {formatCurrency(grandTotal)}
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={handleSaveDraft}
-                disabled={cart.length === 0 || isSavingDraft || isCheckingOut}
-                className="col-span-1 flex flex-col items-center justify-center gap-1 rounded-xl border border-slate-800 bg-slate-950 py-3 text-xs font-semibold text-slate-400 transition hover:border-emerald-400/60 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" />
-                {isSavingDraft ? 'Saving...' : 'Draft'}
-              </button>
-              <button
-                type="button"
-                onClick={handleCheckout}
-                disabled={cart.length === 0 || isCheckingOut || isSavingDraft}
-                className="col-span-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-4 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:from-emerald-400 hover:to-teal-400 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isCheckingOut ? 'Processing...' : 'Checkout'}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <Modal
-        isOpen={isSplitModalOpen}
-        onClose={() => setIsSplitModalOpen(false)}
-        title="Split Payment"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-slate-400">
-            Split the total due between cash and card.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium text-slate-300">
-                Cash Amount
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                inputMode="decimal"
-                value={splitPayments.cash}
-                onChange={(event) =>
-                  handleSplitPaymentChange('cash', event.target.value)
-                }
-                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-300">
-                Card Amount
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                inputMode="decimal"
-                value={splitPayments.card}
-                onChange={(event) =>
-                  handleSplitPaymentChange('card', event.target.value)
-                }
-                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm">
-            <span className="text-slate-400">Remaining Due</span>
-            <span
-              className={`font-semibold ${
-                splitTotals.isValid
-                  ? 'text-emerald-300'
-                  : 'text-slate-100'
-              }`}
-            >
-              {formatCurrency(splitTotals.remaining)}
-            </span>
-          </div>
-          <div className="flex justify-end gap-2">
+      {!currentShift ? (
+        <div className="flex min-h-screen items-center justify-center px-6 text-center">
+          <div className="max-w-md space-y-4">
+            <h1 className="text-2xl font-semibold text-white">
+              Clock in to start selling
+            </h1>
+            <p className="text-sm text-slate-400">
+              Open a shift to unlock the sales dashboard and begin ringing
+              orders.
+            </p>
             <button
               type="button"
-              onClick={() => setIsSplitModalOpen(false)}
-              className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
+              onClick={() => setIsClockInModalOpen(true)}
+              disabled={isShiftLoading}
+              className="rounded-lg bg-emerald-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirmSplitPayment}
-              disabled={!splitTotals.isValid}
-              className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Confirm
+              {isShiftLoading ? 'Checking...' : 'Clock In'}
             </button>
           </div>
         </div>
-      </Modal>
+      ) : (
+        <div className="flex min-h-screen flex-col lg:flex-row">
+          <div className="flex-1">
+            <div className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+              <div className="flex flex-col gap-4 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="relative w-full max-w-xl">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search products..."
+                      className="w-full rounded-xl border border-slate-800 bg-slate-900/70 py-3 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                      value={productQuery}
+                      onChange={(event) => setProductQuery(event.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                      Shift Open
+                    </span>
+                    <button
+                      type="button"
+                      onClick={openCloseShiftModal}
+                      className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:border-red-400 hover:text-red-100"
+                    >
+                      Close Shift
+                    </button>
+                  </div>
+                </div>
 
-      <Modal
-        isOpen={isClockInModalOpen}
-        onClose={closeClockInModal}
-        title="Clock In"
-      >
-        <form className="space-y-4" onSubmit={handleOpenShift}>
-          <p className="text-sm text-slate-400">
-            Open a shift to start processing sales.
-          </p>
-          <div>
-            <label className="text-sm font-medium text-slate-300">
-              Starting Cash
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              inputMode="decimal"
-              value={startingCash}
-              onChange={(event) => setStartingCash(event.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
-              required
+                <div className="flex flex-wrap gap-2">
+                  {categoryTabs.map((category) => {
+                    const isActive = activeCategoryId === category.id;
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => setActiveCategoryId(category.id)}
+                        className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200'
+                            : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                        }`}
+                      >
+                        {category.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 lg:p-6">
+              {isProductLoading ? (
+                <p className="text-sm text-slate-400">Loading products...</p>
+              ) : null}
+              {!isProductLoading && filteredProducts.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-12 text-center text-sm text-slate-500">
+                  No products found. Try adjusting your search or category.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {filteredProducts.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onSelect={handleSelectProduct}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="w-full border-t border-slate-800 bg-slate-950 lg:w-96 lg:border-l lg:border-t-0">
+            <PosCart
+              items={cart}
+              onRemove={handleRemoveFromCart}
+              onUpdateQuantity={handleUpdateQuantity}
+              onPay={handleCheckout}
+              onHold={handleSaveDraft}
+              taxRate={defaultTaxRate}
+              customerQuery={customerQuery}
+              customerResults={customerResults}
+              selectedCustomer={selectedCustomer}
+              isCustomerLoading={isCustomerLoading}
+              onCustomerQueryChange={setCustomerQuery}
+              onSelectCustomer={handleSelectCustomer}
+              onClearCustomer={clearCustomer}
+              onAddCustomer={openCustomerModal}
             />
           </div>
-          {shiftError && (
-            <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-200">
-              {shiftError}
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={closeClockInModal}
-              className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isOpeningShift}
-              className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isOpeningShift ? 'Opening...' : 'Open Shift'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+        </div>
+      )}
 
       <Modal
         isOpen={isCloseShiftModalOpen}
@@ -1438,11 +895,11 @@ export default function POSPage() {
               placeholder="Any discrepancies or remarks..."
             />
           </div>
-          {closeShiftError && (
+          {closeShiftError ? (
             <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-200">
               {closeShiftError}
             </div>
-          )}
+          ) : null}
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -1469,7 +926,7 @@ export default function POSPage() {
       >
         <form className="space-y-4" onSubmit={handleCreateCustomer}>
           <div>
-            <label className="text-sm font-medium text-zinc-700">Name</label>
+            <label className="text-sm font-medium text-slate-300">Name</label>
             <input
               type="text"
               value={newCustomer.name}
@@ -1479,12 +936,12 @@ export default function POSPage() {
                   name: event.target.value,
                 }))
               }
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
               required
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-zinc-700">Phone</label>
+            <label className="text-sm font-medium text-slate-300">Phone</label>
             <input
               type="tel"
               value={newCustomer.phone}
@@ -1494,12 +951,12 @@ export default function POSPage() {
                   phone: event.target.value,
                 }))
               }
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
               required
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-zinc-700">Email</label>
+            <label className="text-sm font-medium text-slate-300">Email</label>
             <input
               type="email"
               value={newCustomer.email}
@@ -1509,11 +966,11 @@ export default function POSPage() {
                   email: event.target.value,
                 }))
               }
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-zinc-700">
+            <label className="text-sm font-medium text-slate-300">
               Address
             </label>
             <textarea
@@ -1524,20 +981,20 @@ export default function POSPage() {
                   address: event.target.value,
                 }))
               }
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
               rows={3}
             />
           </div>
-          {customerSaveError && (
-            <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+          {customerSaveError ? (
+            <div className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-200">
               {customerSaveError}
             </div>
-          )}
+          ) : null}
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setIsCustomerModalOpen(false)}
-              className="rounded-md border border-zinc-300 px-4 py-2 text-sm text-zinc-600 transition hover:border-zinc-400"
+              className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
             >
               Cancel
             </button>
