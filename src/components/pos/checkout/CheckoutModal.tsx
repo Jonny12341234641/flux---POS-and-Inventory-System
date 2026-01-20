@@ -21,15 +21,14 @@ type BackendPaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'split';
 
 type CheckoutModalProps = {
   isOpen: boolean;
-  cartItems: CartItem[];
-  saleItems: SaleItemPayload[];
-  subtotal: number;
-  tax: number;
-  discount: number;
+  cart: CartItem[];
   total: number;
   customer: Customer | null;
+  saleItems: SaleItemPayload[];
   onClose: () => void;
   onComplete: () => void;
+  onHold: () => void | Promise<void>;
+  onVoid: () => void;
 };
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -41,55 +40,28 @@ const formatCurrency = (value: number) => currencyFormatter.format(value);
 
 const roundCurrency = (value: number) => Math.round(value * 100) / 100;
 
-const normalizeBuffer = (value: string) => {
-  if (!value) return '0';
-  if (value === '.') return '0.';
-  if (value.startsWith('.')) return `0${value}`;
-  if (value.length > 1 && value.startsWith('0') && !value.startsWith('0.')) {
-    const trimmed = value.replace(/^0+/, '');
-    return trimmed.length > 0 ? trimmed : '0';
-  }
-  return value;
-};
-
-const formatInputValue = (value: number) => {
-  if (!Number.isFinite(value)) return '0';
-  const rounded = roundCurrency(value);
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
-};
-
-const mapPrimaryMethod = (method: PaymentMethod): BackendPaymentMethod => {
-  if (method === 'other') return 'bank_transfer';
-  if (method === 'split') return 'split';
-  return method;
-};
-
 const mapPaymentMethod = (
   method: PaymentMethod
 ): Exclude<BackendPaymentMethod, 'split'> => {
-  if (method === 'other') return 'bank_transfer';
-  if (method === 'split') return 'cash';
-  return method;
+  if (method === 'card') return 'card';
+  if (method === 'transfer' || method === 'cheque') return 'bank_transfer';
+  return 'cash';
 };
 
 export function CheckoutModal({
   isOpen,
-  cartItems,
-  saleItems,
-  subtotal,
-  tax,
-  discount,
+  cart,
   total,
   customer,
+  saleItems,
   onClose,
   onComplete,
+  onHold,
+  onVoid,
 }: CheckoutModalProps) {
   const [mounted, setMounted] = useState(false);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
-  const [tenderInput, setTenderInput] = useState('0');
-  const [selectedMethod, setSelectedMethod] =
-    useState<PaymentMethod>('cash');
-  const [isFreshInput, setIsFreshInput] = useState(true);
+  const [tenderAmount, setTenderAmount] = useState('0');
   const [inputError, setInputError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,13 +81,12 @@ export function CheckoutModal({
   useEffect(() => {
     if (!isOpen) return;
     setPayments([]);
-    setTenderInput('0');
-    setSelectedMethod('cash');
-    setIsFreshInput(true);
+    setTenderAmount('0');
     setInputError(null);
     setSubmitError(null);
     setIsSubmitting(false);
   }, [isOpen, total]);
+
 
   const totalPaid = useMemo(() => {
     const sum = payments.reduce((acc, payment) => acc + payment.amount, 0);
@@ -123,94 +94,64 @@ export function CheckoutModal({
   }, [payments]);
 
   const totalDue = roundCurrency(total);
-  const remainingDue = Math.max(roundCurrency(totalDue - totalPaid), 0);
+  const remaining = Math.max(roundCurrency(totalDue - totalPaid), 0);
   const changeDue = Math.max(roundCurrency(totalPaid - totalDue), 0);
-  const isComplete = payments.length > 0 && totalPaid >= totalDue;
+  const isSubmitDisabled = payments.length === 0 || totalPaid < totalDue;
 
-  const handleSelectMethod = (method: PaymentMethod) => {
-    setSelectedMethod(method);
-    setInputError(null);
-  };
-
-  const handleInput = (value: string) => {
-    setInputError(null);
-
-    if (value === 'backspace') {
-      setTenderInput((prev) => {
-        const next = prev.length <= 1 ? '0' : prev.slice(0, -1);
-        return normalizeBuffer(next);
-      });
-      setIsFreshInput(false);
-      return;
-    }
-
-    if (value === '.') {
-      setTenderInput((prev) => {
-        if (prev.includes('.')) return prev;
-        return normalizeBuffer(`${prev}.`);
-      });
-      setIsFreshInput(false);
-      return;
-    }
-
-    if (!/^\d$/.test(value)) return;
-
-    setTenderInput((prev) => {
-      const shouldReplace = isFreshInput || prev === '0';
-      const nextRaw = shouldReplace ? value : `${prev}${value}`;
-      if (nextRaw.includes('.')) {
-        const decimals = nextRaw.split('.')[1] ?? '';
-        if (decimals.length > 2) {
-          return prev;
-        }
-      }
-      return normalizeBuffer(nextRaw);
-    });
-    setIsFreshInput(false);
-  };
-
-  const handleClearTender = () => {
-    setTenderInput('0');
-    setIsFreshInput(true);
-    setInputError(null);
-  };
-
-  const handleQuickTender = (value: number | 'exact') => {
-    const nextValue = value === 'exact' ? remainingDue : value;
-    setTenderInput(formatInputValue(nextValue));
-    setIsFreshInput(true);
-    setInputError(null);
-  };
-
-  const handleAddPayment = () => {
+  const handleAddPayment = (method: PaymentMethod) => {
     if (isSubmitting) return;
 
-    const parsed = Number.parseFloat(tenderInput);
-    const tenderAmount = roundCurrency(
-      Number.isFinite(parsed) ? parsed : 0
-    );
+    const parsed = Number.parseFloat(tenderAmount);
+    const amount = roundCurrency(Number.isFinite(parsed) ? parsed : 0);
 
-    if (tenderAmount <= 0) {
-      setInputError('Enter a tendered amount.');
+    if (amount <= 0) {
+      setInputError('Enter a valid paying amount.');
       return;
     }
 
-    if (selectedMethod !== 'cash' && tenderAmount > remainingDue) {
-      setInputError('Non-cash payments cannot exceed the remaining due.');
+    if (remaining <= 0) {
+      setInputError('Payment is already complete.');
       return;
     }
 
-    setPayments((prev) => [
-      ...prev,
-      { method: selectedMethod, amount: tenderAmount },
-    ]);
-    setTenderInput('0');
-    setIsFreshInput(true);
+    const isNonCash =
+      method === 'card' || method === 'transfer' || method === 'cheque';
+    if (isNonCash && amount > remaining) {
+      setInputError('Non-cash payments cannot exceed the remaining balance.');
+      return;
+    }
+
+    setPayments((prev) => [...prev, { method, amount }]);
+    setTenderAmount('0');
+    setInputError(null);
+    setSubmitError(null);
+  };
+
+  const clearInputError = () => {
     setInputError(null);
   };
 
-  const handleCompleteSale = async () => {
-    if (!isComplete || isSubmitting) return;
+  const handleHold = async () => {
+    if (isSubmitting) return;
+    setSubmitError(null);
+    try {
+      await onHold();
+      onClose();
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : 'Draft save failed'
+      );
+    }
+  };
+
+  const handleVoid = () => {
+    if (isSubmitting) return;
+    onVoid();
+    onClose();
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitDisabled || isSubmitting) return;
 
     setIsSubmitting(true);
     setSubmitError(null);
@@ -220,22 +161,20 @@ export function CheckoutModal({
         throw new Error('No sale items found.');
       }
 
-      const primaryMethod =
+      const paymentMethod: BackendPaymentMethod =
         payments.length > 1
           ? 'split'
-          : mapPrimaryMethod(payments[0]?.method ?? 'cash');
+          : mapPaymentMethod(payments[0]?.method ?? 'cash');
 
       const payload = {
         items: saleItems,
         customer_id: customer?.id ?? null,
-        payment_method: primaryMethod,
+        payment_method: paymentMethod,
         payments: payments.map((payment) => ({
           amount: payment.amount,
           method: mapPaymentMethod(payment.method),
         })),
         amount_paid: totalPaid,
-        change_given: changeDue,
-        discount_total: discount,
       };
 
       const res = await fetch('/api/sales', {
@@ -251,7 +190,6 @@ export function CheckoutModal({
 
       window.alert('Sale processed successfully!');
       onComplete();
-      onClose();
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : 'Checkout failed'
@@ -272,94 +210,100 @@ export function CheckoutModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
       onClick={handleRequestClose}
       role="dialog"
       aria-modal="true"
       aria-label="Checkout"
     >
       <div
-        className="relative flex w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-slate-900 shadow-2xl ring-1 ring-slate-800/60 max-h-[90vh] lg:h-[720px] lg:flex-row"
+        className="relative flex h-[80vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl lg:flex-row"
         onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           onClick={handleRequestClose}
-          className="absolute right-4 top-4 rounded-full border border-slate-700 bg-slate-900 p-2 text-slate-300 transition hover:border-slate-500 hover:text-white"
+          className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
           aria-label="Close checkout modal"
         >
           <X className="h-4 w-4" />
         </button>
 
-        <section className="flex w-full flex-col border-b border-slate-800 bg-slate-950 lg:w-1/2 lg:border-b-0 lg:border-r">
-          <div className="border-b border-slate-800 px-8 py-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-              Payment Summary
+        <section className="flex w-full flex-col border-b border-slate-200 bg-white lg:w-2/5 lg:border-b-0 lg:border-r">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+              Bill Summary
             </p>
-            <p className="text-sm text-slate-300">
-              Review items before completing payment
+            <p className="text-sm text-slate-500">
+              Review items before checkout
             </p>
           </div>
-          <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex-1 overflow-y-auto p-6">
             <PaymentSummary
-              cartItems={cartItems}
-              subtotal={subtotal}
-              tax={tax}
-              discount={discount}
+              cart={cart}
               total={totalDue}
               customerName={customer?.name ?? null}
             />
           </div>
         </section>
 
-        <section className="flex w-full flex-col bg-slate-900/40 lg:w-1/2">
-          <div className="flex-1 overflow-y-auto p-8">
-            <PaymentControls
-              selectedMethod={selectedMethod}
-              tenderInput={tenderInput}
-              payments={payments}
-              totalPaid={totalPaid}
-              remainingDue={remainingDue}
-              changeDue={changeDue}
-              onSelectMethod={handleSelectMethod}
-              onInput={handleInput}
-              onConfirmPayment={handleAddPayment}
-              onClearInput={handleClearTender}
-              onQuickTender={handleQuickTender}
-              errorMessage={inputError}
-            />
+        <section className="flex w-full flex-col bg-slate-50 lg:w-3/5">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Payment Terminal
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Accept split payments and finalize the sale
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-right">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  Remaining
+                </p>
+                <p className="text-lg font-semibold text-slate-900">
+                  {formatCurrency(remaining)}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="border-t border-slate-800 bg-slate-950/60 p-6">
+
+          <div className="flex-1 overflow-y-auto p-6">
             {submitError ? (
-              <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                 {submitError}
               </div>
             ) : null}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Total Paid
-                </p>
-                <p className="text-lg font-semibold text-white">
-                  {formatCurrency(totalPaid)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleCompleteSale}
-                disabled={!isComplete || isSubmitting}
-                className={`h-12 rounded-xl px-6 text-sm font-semibold transition ${
-                  isComplete
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 hover:bg-emerald-400'
-                    : 'cursor-not-allowed bg-slate-800 text-slate-500'
-                }`}
-              >
-                {isSubmitting ? 'Processing...' : 'Complete Sale'}
-              </button>
+            <PaymentControls
+              total={totalDue}
+              remaining={remaining}
+              tenderAmount={tenderAmount}
+              setTenderAmount={setTenderAmount}
+              onAddPayment={handleAddPayment}
+              onComplete={handleSubmit}
+              onHold={handleHold}
+              onVoid={handleVoid}
+              isSubmitDisabled={isSubmitDisabled}
+              errorMessage={inputError}
+              isSubmitting={isSubmitting}
+              onClearError={clearInputError}
+            />
+          </div>
+
+          <div className="border-t border-slate-200 bg-white px-6 py-4 text-sm text-slate-600">
+            <div className="flex items-center justify-between">
+              <span>Total Paid</span>
+              <span className="font-semibold text-slate-900">
+                {formatCurrency(totalPaid)}
+              </span>
             </div>
             {changeDue > 0 ? (
-              <div className="mt-4 text-sm text-emerald-200">
-                Change due: {formatCurrency(changeDue)}
+              <div className="mt-2 flex items-center justify-between text-emerald-600">
+                <span>Change Due</span>
+                <span className="font-semibold text-emerald-700">
+                  {formatCurrency(changeDue)}
+                </span>
               </div>
             ) : null}
           </div>

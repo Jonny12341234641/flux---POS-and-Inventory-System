@@ -1,8 +1,6 @@
-export type PaymentMethod = 'cash' | 'card' | 'split' | 'other';
+export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'cheque' | 'split';
 
-export interface PaymentItem {
+export interface PaymentRecord {
   method: PaymentMethod;
   amount: number;
 }
-
-export type PaymentRecord = PaymentItem;

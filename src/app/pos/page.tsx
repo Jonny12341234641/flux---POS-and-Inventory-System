@@ -706,8 +706,18 @@ export default function POSPage() {
     setIsCheckoutOpen(false);
   };
 
+  const handleHoldCheckout = async () => {
+    await handleSaveDraft();
+    setIsCheckoutOpen(false);
+  };
+
+  const handleVoidCheckout = () => {
+    setCart([]);
+    setIsCheckoutOpen(false);
+  };
+
   const handleSaveDraft = async () => {
-    if (isSavingDraft || isCheckoutOpen) return;
+    if (isSavingDraft) return;
 
     const items = buildSaleItems();
     if (!items.length) return;
@@ -895,15 +905,14 @@ export default function POSPage() {
 
       <CheckoutModal
         isOpen={isCheckoutOpen}
-        cartItems={cart}
+        cart={cart}
         saleItems={buildSaleItems()}
-        subtotal={cartSummary.subTotal}
-        tax={cartSummary.tax}
-        discount={cartSummary.discount}
         total={grandTotal}
         customer={selectedCustomer}
         onClose={() => setIsCheckoutOpen(false)}
         onComplete={handleCheckoutComplete}
+        onHold={handleHoldCheckout}
+        onVoid={handleVoidCheckout}
       />
 
       <Modal
