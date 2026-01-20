@@ -20,7 +20,7 @@ const navItems = [
   { label: 'Cash Register', href: '/pos/register', icon: Wallet },
   { label: 'Quotation', href: '/pos/quotes', icon: FileText },
   { label: 'Sales Return', href: '/pos/returns', icon: RotateCcw },
-  { label: 'Reports', href: '#', icon: BarChart3 },
+  { label: 'Reports', href: '/pos/reports', icon: BarChart3 },
   { label: 'Settings', href: '#', icon: Settings },
 ];
 
