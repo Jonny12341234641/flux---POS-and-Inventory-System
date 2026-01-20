@@ -7,7 +7,7 @@ import { Search } from 'lucide-react';
 import { ClockInModal } from '../../components/pos/ClockInModal';
 import { ProductCard } from '../../components/pos/ProductCard';
 import { PosCart } from '../../components/pos/PosCart';
-import { CheckoutModal } from '../../components/pos/checkout/CheckoutModal';
+import { CheckoutModal } from '../../components/pos/checkout/CheckOutInterface';
 import { ItemStagingModal } from '../../components/pos/staging/ItemStagingModal';
 import { Modal } from '../../components/ui/modal';
 import type {
