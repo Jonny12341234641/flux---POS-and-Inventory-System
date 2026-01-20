@@ -17,7 +17,7 @@ import { cn } from '../../lib/utils';
 const navItems = [
   { label: 'Sales', href: '/pos', icon: ShoppingCart },
   { label: 'Order/Debt', href: '/pos/orders', icon: Receipt },
-  { label: 'Cash Register', href: '#', icon: Wallet },
+  { label: 'Cash Register', href: '/pos/register', icon: Wallet },
   { label: 'Quotation', href: '#', icon: FileText },
   { label: 'Sales Return', href: '#', icon: RotateCcw },
   { label: 'Reports', href: '#', icon: BarChart3 },
