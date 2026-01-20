@@ -198,18 +198,26 @@ export function ItemStagingModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex h-screen w-screen bg-slate-950/90 text-slate-100 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onCancel}
       role="dialog"
       aria-modal="true"
       aria-label="Item staging"
     >
       <div
-        className="flex h-full w-full flex-col overflow-hidden bg-slate-950"
+        className="relative flex h-[650px] w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-900/5 dark:bg-slate-900"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
-          <div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="absolute right-4 top-4 rounded-full border border-slate-700 bg-slate-900 p-2 text-slate-300 transition hover:border-slate-500 hover:text-white"
+          aria-label="Close staging modal"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <section className="flex w-1/2 flex-col border-r border-slate-800 bg-slate-950">
+          <div className="border-b border-slate-800 px-8 py-6">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
               Item Staging
             </p>
@@ -217,23 +225,15 @@ export function ItemStagingModal({
               Confirm quantity before adding to cart
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-full border border-slate-700 bg-slate-900 p-2 text-slate-300 transition hover:border-slate-500 hover:text-white"
-            aria-label="Close staging modal"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="flex h-full flex-1 flex-col lg:flex-row">
-          <section className="flex w-full flex-1 flex-col border-b border-slate-800 bg-slate-950 lg:w-1/2 lg:border-b-0 lg:border-r">
-            <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex h-full flex-col justify-center">
               <StagingInfo product={product} currentQty={currentQty} />
             </div>
-          </section>
-          <section className="flex w-full flex-1 flex-col bg-slate-900/40 lg:w-1/2">
-            <div className="flex-1 p-6">
+          </div>
+        </section>
+        <section className="flex w-1/2 flex-col bg-slate-900/40">
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex h-full flex-col justify-center">
               <StagingNumpad
                 value={inputBuffer}
                 onInput={handleInput}
@@ -253,8 +253,8 @@ export function ItemStagingModal({
                 </button>
               ) : null}
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
     </div>,
     document.body
