@@ -21,7 +21,7 @@ const navItems = [
   { label: 'Quotation', href: '/pos/quotes', icon: FileText },
   { label: 'Sales Return', href: '/pos/returns', icon: RotateCcw },
   { label: 'Reports', href: '/pos/reports', icon: BarChart3 },
-  { label: 'Settings', href: '#', icon: Settings },
+  { label: 'Settings', href: '/pos/settings', icon: Settings },
 ];
 
 type PosSidebarProps = {
