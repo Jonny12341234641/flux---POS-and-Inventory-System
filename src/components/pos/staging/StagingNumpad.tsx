@@ -9,6 +9,9 @@ type StagingNumpadProps = {
   onCancel: () => void;
   mode: 'add' | 'edit';
   errorMessage?: string | null;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  inputAriaLabel?: string;
 };
 
 const keypadLayout = [
@@ -33,8 +36,13 @@ export function StagingNumpad({
   onCancel,
   mode,
   errorMessage,
+  confirmLabel,
+  cancelLabel,
+  inputAriaLabel,
 }: StagingNumpadProps) {
-  const confirmLabel = mode === 'edit' ? 'Update Item' : 'Add to Cart';
+  const confirmText = confirmLabel ?? (mode === 'edit' ? 'Update Item' : 'Add to Cart');
+  const cancelText = cancelLabel ?? 'Cancel';
+  const inputLabel = inputAriaLabel ?? 'Quantity input';
   const hasError = Boolean(errorMessage);
 
   return (
@@ -44,7 +52,7 @@ export function StagingNumpad({
           readOnly
           value={value}
           inputMode="decimal"
-          aria-label="Quantity input"
+          aria-label={inputLabel}
           className={`w-full rounded-2xl border bg-slate-950 px-4 py-5 text-right text-5xl font-semibold text-white shadow-inner outline-none ${
             hasError
               ? 'border-red-500 text-red-100'
@@ -80,7 +88,7 @@ export function StagingNumpad({
           className="flex h-16 items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white"
         >
           <X className="h-4 w-4" />
-          Cancel
+          {cancelText}
         </button>
         <button
           type="button"
@@ -88,7 +96,7 @@ export function StagingNumpad({
           className="flex h-16 items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400"
         >
           <Check className="h-4 w-4" />
-          {confirmLabel}
+          {confirmText}
         </button>
       </div>
     </div>

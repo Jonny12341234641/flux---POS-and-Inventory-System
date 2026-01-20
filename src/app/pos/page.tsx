@@ -7,6 +7,7 @@ import { Search } from 'lucide-react';
 import { ClockInModal } from '../../components/pos/ClockInModal';
 import { ProductCard } from '../../components/pos/ProductCard';
 import { PosCart } from '../../components/pos/PosCart';
+import { CheckoutModal } from '../../components/pos/checkout/CheckoutModal';
 import { ItemStagingModal } from '../../components/pos/staging/ItemStagingModal';
 import { Modal } from '../../components/ui/modal';
 import type {
@@ -139,7 +140,7 @@ export default function POSPage() {
   const [isClosingShift, setIsClosingShift] = useState(false);
   const [closeShiftError, setCloseShiftError] = useState<string | null>(null);
 
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [draftSale, setDraftSale] = useState<Sale | null>(null);
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
@@ -687,55 +688,26 @@ export default function POSPage() {
     return false;
   };
 
-  const handleCheckout = async () => {
-    if (isCheckingOut || isSavingDraft) return;
+  const handleCheckout = () => {
+    if (isCheckoutOpen || isSavingDraft) return;
 
     const items = buildSaleItems();
     if (!items.length) return;
     if (!ensureOpenShift()) return;
 
-    setIsCheckingOut(true);
-    try {
-      const payload = {
-        items,
-        payment_method: 'cash',
-        amount_paid: grandTotal,
-        discount_total: 0,
-        customer_id: selectedCustomer?.id ?? null,
-      };
+    setIsCheckoutOpen(true);
+  };
 
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Checkout failed');
-      }
-
-      window.alert('Sale processed successfully!');
-      setCart([]);
-      setSelectedCustomer(null);
-      setCustomerQuery('');
-      setCustomerResults([]);
-    } catch (error) {
-      console.error(error);
-      const message =
-        error instanceof Error ? error.message : 'Checkout failed';
-      if (message.toLowerCase().includes('no open shift')) {
-        setIsClockInModalOpen(true);
-        return;
-      }
-      window.alert(message);
-    } finally {
-      setIsCheckingOut(false);
-    }
+  const handleCheckoutComplete = () => {
+    setCart([]);
+    setSelectedCustomer(null);
+    setCustomerQuery('');
+    setCustomerResults([]);
+    setIsCheckoutOpen(false);
   };
 
   const handleSaveDraft = async () => {
-    if (isSavingDraft || isCheckingOut) return;
+    if (isSavingDraft || isCheckoutOpen) return;
 
     const items = buildSaleItems();
     if (!items.length) return;
@@ -920,6 +892,19 @@ export default function POSPage() {
           }
         />
       ) : null}
+
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        cartItems={cart}
+        saleItems={buildSaleItems()}
+        subtotal={cartSummary.subTotal}
+        tax={cartSummary.tax}
+        discount={cartSummary.discount}
+        total={grandTotal}
+        customer={selectedCustomer}
+        onClose={() => setIsCheckoutOpen(false)}
+        onComplete={handleCheckoutComplete}
+      />
 
       <Modal
         isOpen={isCloseShiftModalOpen}
