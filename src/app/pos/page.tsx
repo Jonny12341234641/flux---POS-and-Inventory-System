@@ -7,6 +7,7 @@ import { Search } from 'lucide-react';
 import { ClockInModal } from '../../components/pos/ClockInModal';
 import { ProductCard } from '../../components/pos/ProductCard';
 import { PosCart } from '../../components/pos/PosCart';
+import { ItemStagingModal } from '../../components/pos/staging/ItemStagingModal';
 import { Modal } from '../../components/ui/modal';
 import type {
   CartItem,
@@ -102,6 +103,11 @@ export default function POSPage() {
   const [activeCategoryId, setActiveCategoryId] = useState('all');
 
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [stagingItem, setStagingItem] = useState<{
+    product: Product;
+    quantity: number;
+    mode: 'add' | 'edit';
+  } | null>(null);
   const [defaultTaxRate, setDefaultTaxRate] = useState(0);
 
   const [customerQuery, setCustomerQuery] = useState('');
@@ -416,21 +422,63 @@ export default function POSPage() {
   );
 
   const handleSelectProduct = (product: Product) => {
+    setStagingItem({ product, quantity: 1, mode: 'add' });
+  };
+
+  const handleConfirmStaging = (quantity: number) => {
+    if (!stagingItem || quantity <= 0) {
+      setStagingItem(null);
+      return;
+    }
+
     setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
+      const existing = prev.find(
+        (item) => item.product.id === stagingItem.product.id
+      );
+
+      if (!existing) {
+        return [
+          ...prev,
+          {
+            product: stagingItem.product,
+            quantity,
+            discount_percent: 0,
+          },
+        ];
+      }
+
+      if (stagingItem.mode === 'edit') {
         return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+          item.product.id === stagingItem.product.id
+            ? { ...item, quantity }
             : item
         );
       }
 
-      return [
-        ...prev,
-        { product, quantity: 1, discount_percent: 0 },
-      ];
+      return prev.map((item) =>
+        item.product.id === stagingItem.product.id
+          ? { ...item, quantity: item.quantity + quantity }
+          : item
+      );
     });
+
+    setStagingItem(null);
+  };
+
+  const handleEditItem = (item: CartItem) => {
+    setStagingItem({
+      product: item.product,
+      quantity: item.quantity,
+      mode: 'edit',
+    });
+  };
+
+  const handleRemoveStagedItem = () => {
+    if (!stagingItem) return;
+    setCart((prev) =>
+      prev.filter((item) => item.product.id !== stagingItem.product.id)
+    );
+    setStagingItem(null);
   };
 
   const handleRemoveFromCart = (productId: string) => {
@@ -843,6 +891,7 @@ export default function POSPage() {
               items={cart}
               onRemove={handleRemoveFromCart}
               onUpdateQuantity={handleUpdateQuantity}
+              onEditItem={handleEditItem}
               onPay={handleCheckout}
               onHold={handleSaveDraft}
               taxRate={defaultTaxRate}
@@ -858,6 +907,19 @@ export default function POSPage() {
           </div>
         </div>
       )}
+
+      {stagingItem ? (
+        <ItemStagingModal
+          product={stagingItem.product}
+          initialQty={stagingItem.quantity}
+          mode={stagingItem.mode}
+          onConfirm={handleConfirmStaging}
+          onCancel={() => setStagingItem(null)}
+          onRemove={
+            stagingItem.mode === 'edit' ? handleRemoveStagedItem : undefined
+          }
+        />
+      ) : null}
 
       <Modal
         isOpen={isCloseShiftModalOpen}

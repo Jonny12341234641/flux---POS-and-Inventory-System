@@ -47,6 +47,7 @@ type PosCartProps = {
   items: CartItem[];
   onRemove: (productId: string) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
+  onEditItem: (item: CartItem) => void;
   onPay: () => void;
   onHold: () => void;
   taxRate?: number;
@@ -64,6 +65,7 @@ export function PosCart({
   items,
   onRemove,
   onUpdateQuantity,
+  onEditItem,
   onPay,
   onHold,
   taxRate = 0,
@@ -224,7 +226,16 @@ export function PosCart({
             return (
               <div
                 key={item.product.id}
-                className="rounded-xl border border-slate-800 bg-slate-900/60 p-3"
+                className="cursor-pointer rounded-xl border border-slate-800 bg-slate-900/60 p-3 transition hover:border-emerald-400/60"
+                role="button"
+                tabIndex={0}
+                onClick={() => onEditItem(item)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onEditItem(item);
+                  }
+                }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -243,7 +254,8 @@ export function PosCart({
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(event) => {
+                        event.stopPropagation();
                         const nextQuantity = quantity - 1;
                         if (nextQuantity <= 0) {
                           onRemove(item.product.id);
@@ -261,9 +273,10 @@ export function PosCart({
                     </span>
                     <button
                       type="button"
-                      onClick={() =>
-                        onUpdateQuantity(item.product.id, quantity + 1)
-                      }
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onUpdateQuantity(item.product.id, quantity + 1);
+                      }}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-slate-200 transition hover:border-emerald-400 hover:text-emerald-300"
                       aria-label={`Increase ${item.product.name}`}
                     >
@@ -275,7 +288,10 @@ export function PosCart({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onRemove(item.product.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRemove(item.product.id);
+                    }}
                     className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-slate-400 transition hover:border-red-400 hover:text-red-300"
                     aria-label={`Remove ${item.product.name}`}
                   >
