@@ -174,106 +174,106 @@ export function XReportPreview({ sales, shift }: XReportPreviewProps) {
     : 'Unknown';
 
   return (
-    <article className="print-area w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+    <article className="print-area w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
       <header className="text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-slate-400">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-slate-500">
           {reportTitle}
         </p>
-        <h2 className="mt-2 text-lg font-semibold text-slate-900">
+        <h2 className="mt-2 text-lg font-semibold text-slate-100">
           Cashier Scoreboard
         </h2>
-        <p className="mt-1 text-xs text-slate-500">{reportTime}</p>
-        <div className="mt-4 rounded-xl border border-dashed border-slate-200 px-3 py-2 text-[11px] text-slate-500">
+        <p className="mt-1 text-xs text-slate-400">{reportTime}</p>
+        <div className="mt-4 rounded-xl border border-dashed border-slate-800 px-3 py-2 text-[11px] text-slate-400">
           <div className="flex items-center justify-between">
             <span>Shift Start</span>
-            <span className="font-semibold text-slate-700">{shiftStart}</span>
+            <span className="font-semibold text-slate-300">{shiftStart}</span>
           </div>
           <div className="mt-1 flex items-center justify-between">
             <span>Shift End</span>
-            <span className="font-semibold text-slate-700">{shiftEnd}</span>
+            <span className="font-semibold text-slate-300">{shiftEnd}</span>
           </div>
         </div>
       </header>
 
-      <section className="mt-6 border-t border-dashed border-slate-200 pt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+      <section className="mt-6 border-t border-dashed border-slate-800 pt-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
           Sales Summary
         </p>
-        <div className="mt-3 space-y-2 text-sm text-slate-600">
+        <div className="mt-3 space-y-2 text-sm text-slate-400">
           <div className="flex items-center justify-between">
             <span>Transactions</span>
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-100">
               {transactionCount}
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span>Gross Sales</span>
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-100">
               {formatCents(grossSales)}
             </span>
           </div>
-          <div className="flex items-center justify-between text-red-600">
+          <div className="flex items-center justify-between text-red-400">
             <span>Returns</span>
             <span className="font-semibold">
               -{formatCents(returnsTotal)}
             </span>
           </div>
-          <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-2 text-base font-semibold text-slate-900">
+          <div className="flex items-center justify-between border-t border-dashed border-slate-800 pt-2 text-base font-semibold text-slate-100">
             <span>Net Sales</span>
             <span>{formatCents(netSales)}</span>
           </div>
-          <div className="flex items-center justify-between text-sm text-slate-600">
+          <div className="flex items-center justify-between text-sm text-slate-400">
             <span>Tax Collected</span>
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-100">
               {formatCents(taxCollected)}
             </span>
           </div>
         </div>
       </section>
 
-      <section className="mt-6 border-t border-dashed border-slate-200 pt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+      <section className="mt-6 border-t border-dashed border-slate-800 pt-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
           Payment Breakdown
         </p>
-        <div className="mt-3 space-y-2 text-sm text-slate-600">
+        <div className="mt-3 space-y-2 text-sm text-slate-400">
           <div className="flex items-center justify-between">
             <span>Cash</span>
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-100">
               {formatCents(paymentTotals.cash)}
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span>Card</span>
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-100">
               {formatCents(paymentTotals.card)}
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span>Store Credit</span>
-            <span className="font-semibold text-slate-900">
+            <span className="font-semibold text-slate-100">
               {formatCents(paymentTotals.storeCredit)}
             </span>
           </div>
         </div>
       </section>
 
-      <section className="mt-6 border-t border-dashed border-slate-200 pt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">
+      <section className="mt-6 border-t border-dashed border-slate-800 pt-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
           Top Movers
         </p>
         {topMovers.length === 0 ? (
-          <div className="mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs text-slate-500">
+          <div className="mt-3 rounded-lg border border-dashed border-slate-800 bg-slate-950 px-3 py-4 text-center text-xs text-slate-400">
             No item data available yet.
           </div>
         ) : (
-          <ul className="mt-3 space-y-2 text-sm text-slate-600">
+          <ul className="mt-3 space-y-2 text-sm text-slate-400">
             {topMovers.map((item) => (
               <li
                 key={item.name}
                 className="flex items-center justify-between"
               >
-                <span className="truncate text-slate-700">{item.name}</span>
-                <span className="font-semibold text-slate-900">
+                <span className="truncate text-slate-300">{item.name}</span>
+                <span className="font-semibold text-slate-100">
                   {item.quantity}
                 </span>
               </li>
@@ -283,7 +283,7 @@ export function XReportPreview({ sales, shift }: XReportPreviewProps) {
       </section>
 
       {!shift ? (
-        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+        <div className="mt-6 rounded-lg border border-amber-900/50 bg-amber-900/20 px-3 py-2 text-xs text-amber-400">
           No active shift loaded yet.
         </div>
       ) : null}

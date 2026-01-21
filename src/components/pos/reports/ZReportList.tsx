@@ -64,13 +64,13 @@ export function ZReportList({
   error,
 }: ZReportListProps) {
   return (
-    <div className="reports-list rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="reports-list rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
             Shift History
           </p>
-          <h3 className="mt-2 text-sm font-semibold text-slate-900">
+          <h3 className="mt-2 text-sm font-semibold text-slate-100">
             Closed Z-Reports
           </h3>
         </div>
@@ -81,18 +81,18 @@ export function ZReportList({
 
       <div className="mt-4 space-y-3">
         {isLoading ? (
-          <p className="text-sm text-slate-500">Loading shift history...</p>
+          <p className="text-sm text-slate-400">Loading shift history...</p>
         ) : null}
 
         {error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-lg border border-red-900/50 bg-red-900/20 px-4 py-3 text-sm text-red-400">
             {error}
           </div>
         ) : null}
 
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="overflow-x-auto rounded-xl border border-slate-800">
+          <table className="min-w-full divide-y divide-slate-800 text-sm">
+            <thead className="bg-slate-950 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Opened By</th>
@@ -101,12 +101,12 @@ export function ZReportList({
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-800">
               {!isLoading && !error && shifts.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-4 py-6 text-center text-sm text-slate-500"
+                    className="px-4 py-6 text-center text-sm text-slate-400"
                   >
                     No closed shifts yet.
                   </td>
@@ -116,26 +116,26 @@ export function ZReportList({
                 const variance = resolveVariance(shift);
                 const varianceClass =
                   variance < 0
-                    ? 'text-red-600'
+                    ? 'text-red-400'
                     : variance > 0
-                      ? 'text-emerald-600'
-                      : 'text-slate-600';
+                      ? 'text-emerald-400'
+                      : 'text-slate-400';
                 const isSelected = selectedShiftId === shift.id;
 
                 return (
                   <tr
                     key={shift.id}
                     className={
-                      isSelected ? 'bg-emerald-50' : 'hover:bg-slate-50'
+                      isSelected ? 'bg-emerald-900/30' : 'hover:bg-slate-950'
                     }
                   >
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-slate-300">
                       {formatDate(shift.end_time ?? shift.start_time)}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-slate-400">
                       {shift.cashier?.name ?? shift.user_id ?? 'Unknown'}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                    <td className="px-4 py-3 text-right font-semibold text-slate-100">
                       {formatAmount(shift.ending_cash ?? 0)}
                     </td>
                     <td className={`px-4 py-3 text-right ${varianceClass}`}>
@@ -147,8 +147,8 @@ export function ZReportList({
                         onClick={() => onSelect?.(shift)}
                         className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                           isSelected
-                            ? 'border-emerald-200 bg-emerald-100 text-emerald-700'
-                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                            ? 'border-emerald-900/80 bg-emerald-900/50 text-emerald-400'
+                            : 'border-slate-800 bg-slate-900 text-slate-300 hover:bg-slate-800'
                         }`}
                       >
                         View/Reprint

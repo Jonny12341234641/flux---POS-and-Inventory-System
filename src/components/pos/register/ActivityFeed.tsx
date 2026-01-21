@@ -92,48 +92,48 @@ export function ActivityFeed({
   }, [sales, shiftStart]);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
       <div className="flex items-center gap-2">
-        <History className="h-5 w-5 text-slate-500" />
-        <h2 className="text-base font-semibold text-slate-900">
+        <History className="h-5 w-5 text-slate-400" />
+        <h2 className="text-base font-semibold text-slate-100">
           Activity Feed
         </h2>
       </div>
 
       <div className="mt-6">
         {isLoading ? (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+          <div className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-400">
             Loading activity...
           </div>
         ) : null}
 
         {error ? (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          <div className="mt-3 rounded-lg border border-amber-900/50 bg-amber-900/20 px-4 py-3 text-sm text-amber-400">
             {error}
           </div>
         ) : null}
 
         {!isLoading && !error && events.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+          <div className="rounded-lg border border-dashed border-slate-800 bg-slate-900 px-4 py-8 text-center text-sm text-slate-400">
             No activity yet.
           </div>
         ) : null}
 
         {!isLoading && !error && events.length > 0 ? (
-          <ul className="relative space-y-5 border-l border-slate-200 pl-5">
+          <ul className="relative space-y-5 border-l border-slate-800 pl-5">
             {events.map((event) => (
               <li key={event.id} className="relative">
                 <span
                   className={`absolute -left-[9px] top-1.5 h-2.5 w-2.5 rounded-full ${
                     event.tone === 'sale'
                       ? 'bg-emerald-400'
-                      : 'bg-slate-300'
+                      : 'bg-slate-700'
                   }`}
                 />
-                <div className="text-sm font-medium text-slate-700">
+                <div className="text-sm font-medium text-slate-300">
                   {event.label}
                 </div>
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-slate-500">
                   {event.timeLabel || 'Time unavailable'}
                 </div>
               </li>

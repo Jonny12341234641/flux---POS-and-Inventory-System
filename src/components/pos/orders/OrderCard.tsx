@@ -84,35 +84,35 @@ export function OrderCard({
       onClick={onSelect}
       onKeyDown={handleKeyDown}
       aria-pressed={isSelected}
-      className={`rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+      className={`rounded-2xl border bg-slate-900 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
         isSelected
           ? 'border-emerald-300 ring-1 ring-emerald-200'
-          : 'border-slate-200'
+          : 'border-slate-800'
       }`}
     >
-      <div className="flex items-center justify-between text-xs text-slate-500">
+      <div className="flex items-center justify-between text-xs text-slate-400">
         <div className="flex items-center gap-2">
           <Clock3 className="h-3.5 w-3.5" />
           <span>{formatRelativeTime(createdAt)}</span>
         </div>
-        <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <span className="rounded-full bg-slate-700/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-300">
           Draft
         </span>
       </div>
 
       <div className="mt-3 space-y-1">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
           <User className="h-4 w-4 text-slate-400" />
           <span className="truncate">{displayName}</span>
         </div>
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-400">
           {resolvedCount} {countLabel}
         </div>
       </div>
 
       <div className="mt-4">
-        <div className="text-xs text-slate-500">Total</div>
-        <div className="text-xl font-semibold text-slate-900">
+        <div className="text-xs text-slate-400">Total</div>
+        <div className="text-xl font-semibold text-slate-100">
           {formatCurrency(resolvedTotal)}
         </div>
       </div>
@@ -129,7 +129,7 @@ export function OrderCard({
         <button
           type="button"
           onClick={handleDiscard}
-          className="flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:border-red-300"
+          className="flex items-center justify-center gap-2 rounded-lg border border-red-900/50 bg-red-900/20 px-3 py-2 text-xs font-semibold text-red-400 transition hover:border-red-900/80"
         >
           <Trash2 className="h-3.5 w-3.5" />
           Discard

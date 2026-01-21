@@ -81,8 +81,8 @@ export function QuoteList({
         const expired = isExpiredQuote(quote.createdAt);
         const statusLabel = expired ? 'Expired' : 'Active';
         const statusClasses = expired
-          ? 'bg-slate-100 text-slate-500'
-          : 'bg-emerald-50 text-emerald-700';
+          ? 'bg-slate-700/50 text-slate-400'
+          : 'bg-emerald-900/30 text-emerald-400';
 
         const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -99,16 +99,16 @@ export function QuoteList({
             aria-pressed={isSelected}
             onClick={() => onSelect?.(quote.id)}
             onKeyDown={handleKeyDown}
-            className={`rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+            className={`rounded-2xl border bg-slate-900 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
               isSelected
                 ? 'border-emerald-300 ring-1 ring-emerald-200'
-                : 'border-slate-200'
+                : 'border-slate-800'
             }`}
           >
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-xs text-slate-400">
               <div className="flex items-center gap-2">
                 <FileText className="h-3.5 w-3.5" />
-                <span className="font-mono text-xs text-slate-600">
+                <span className="font-mono text-xs text-slate-500">
                   {buildReference(quote.id)}
                 </span>
               </div>
@@ -119,19 +119,19 @@ export function QuoteList({
               </span>
             </div>
 
-            <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-slate-100">
               <User className="h-4 w-4 text-slate-400" />
               <span className="truncate">{displayName}</span>
             </div>
 
-            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+            <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
               <Clock3 className="h-3.5 w-3.5" />
               <span>{formatRelativeTime(quote.createdAt)}</span>
             </div>
 
             <div className="mt-4">
-              <div className="text-xs text-slate-500">Total</div>
-              <div className="text-lg font-semibold text-slate-900">
+              <div className="text-xs text-slate-400">Total</div>
+              <div className="text-lg font-semibold text-slate-100">
                 {formatCurrency(resolvedTotal)}
               </div>
             </div>

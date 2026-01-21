@@ -49,31 +49,31 @@ const iconMap: Record<ActivityEvent['type'], typeof AlertCircle> = {
 };
 
 const toneMap: Record<ActivityEvent['type'], string> = {
-  sale: 'bg-emerald-50 text-emerald-600',
-  cash: 'bg-emerald-50 text-emerald-600',
-  alert: 'bg-amber-50 text-amber-600',
-  shift: 'bg-slate-100 text-slate-500',
+  sale: 'bg-emerald-900/30 text-emerald-400',
+  cash: 'bg-emerald-900/30 text-emerald-400',
+  alert: 'bg-amber-900/30 text-amber-400',
+  shift: 'bg-slate-800 text-slate-400',
 };
 
 export function ActivityLog() {
   return (
-    <article className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+    <article className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
       <header className="flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
             Activity Log
           </p>
-          <h3 className="mt-2 text-lg font-semibold text-slate-900">
+          <h3 className="mt-2 text-lg font-semibold text-slate-100">
             Shift Timeline
           </h3>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <span className="rounded-full bg-slate-800 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
           Live
         </span>
       </header>
 
       <div className="relative mt-6">
-        <div className="absolute left-3 top-0 h-full w-px bg-slate-200" />
+        <div className="absolute left-3 top-0 h-full w-px bg-slate-800" />
         <ul className="space-y-6">
           {events.map((event) => {
             const Icon = iconMap[event.type];
@@ -90,10 +90,10 @@ export function ActivityLog() {
                   </span>
                   <span>{event.time}</span>
                 </div>
-                <p className="mt-1 text-sm font-semibold text-slate-900">
+                <p className="mt-1 text-sm font-semibold text-slate-100">
                   {event.title}
                 </p>
-                <p className="text-xs text-slate-500">{event.detail}</p>
+                <p className="text-xs text-slate-400">{event.detail}</p>
               </li>
             );
           })}

@@ -114,8 +114,8 @@ export function QuotePreview({
           }
         }
       `}</style>
-      <div className="quote-toolbar flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+      <div className="quote-toolbar flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-300">
           <FileText className="h-4 w-4 text-slate-400" />
           <span>Quotation Preview</span>
         </div>
@@ -124,7 +124,7 @@ export function QuotePreview({
             type="button"
             onClick={handlePrint}
             disabled={isActionDisabled}
-            className={`flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 ${
+            className={`flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-800 ${
               isActionDisabled ? 'cursor-not-allowed opacity-60' : ''
             }`}
           >
@@ -147,60 +147,60 @@ export function QuotePreview({
 
       <div className="flex-1 min-h-0">
         {!quote ? (
-          <div className="quote-placeholder flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center text-sm text-slate-500">
-            <FileText className="h-8 w-8 text-slate-300" />
+          <div className="quote-placeholder flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-800 bg-slate-900 px-6 py-16 text-center text-sm text-slate-400">
+            <FileText className="h-8 w-8 text-slate-600" />
             <p>Select a quote to preview the document.</p>
           </div>
         ) : (
           <div className="flex h-full flex-col gap-4">
             {isLoading ? (
-              <div className="quote-status rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+              <div className="quote-status rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-400">
                 Loading latest quote details...
               </div>
             ) : null}
             {error ? (
-              <div className="quote-status rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+              <div className="quote-status rounded-lg border border-amber-900/50 bg-amber-900/20 px-4 py-3 text-xs text-amber-400">
                 {error}
               </div>
             ) : null}
             <div className="flex-1 min-h-0">
               <div className="flex h-full justify-center">
-                <article className="print-area quote-preview-card w-full max-w-3xl min-h-[720px] rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+                <article className="print-area quote-preview-card w-full max-w-3xl min-h-[720px] rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+                      <div className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
                         Estimate / Quotation
                       </div>
-                      <h1 className="mt-2 text-2xl font-semibold text-slate-900">
+                      <h1 className="mt-2 text-2xl font-semibold text-slate-100">
                         ESTIMATE / QUOTATION
                       </h1>
                     </div>
-                    <div className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                    <div className="rounded-full bg-slate-800 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                       {buildReference(quote)}
                     </div>
                   </div>
 
                   <div className="mt-6 grid gap-6 sm:grid-cols-[1.2fr,0.8fr]">
                     <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                         Customer
                       </div>
-                      <div className="mt-2 text-lg font-semibold text-slate-900">
+                      <div className="mt-2 text-lg font-semibold text-slate-100">
                         {quote.customerName?.trim()
                           ? quote.customerName
                           : 'Guest'}
                       </div>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
+                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-xs text-slate-400">
                       <div className="flex items-center justify-between">
                         <span>Quote Ref</span>
-                        <span className="font-mono text-slate-900">
+                        <span className="font-mono text-slate-200">
                           {buildReference(quote)}
                         </span>
                       </div>
                       <div className="mt-2 flex items-center justify-between">
                         <span>Date</span>
-                        <span className="text-slate-900">
+                        <span className="text-slate-200">
                           {formatDate(quote.createdAt)}
                         </span>
                       </div>
@@ -208,17 +208,17 @@ export function QuotePreview({
                   </div>
 
                   <div className="mt-6">
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                       Line Items
                     </div>
                     {quote.items.length === 0 ? (
-                      <div className="mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">
+                      <div className="mt-3 rounded-lg border border-dashed border-slate-800 bg-slate-950 px-4 py-6 text-center text-xs text-slate-400">
                         No line items added yet.
                       </div>
                     ) : (
-                      <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
+                      <div className="mt-3 overflow-hidden rounded-xl border border-slate-800">
                         <table className="min-w-full text-sm">
-                          <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                          <thead className="bg-slate-950 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                             <tr>
                               <th className="px-4 py-3">Item</th>
                               <th className="px-4 py-3 text-right">Qty</th>
@@ -226,19 +226,19 @@ export function QuotePreview({
                               <th className="px-4 py-3 text-right">Total</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100">
+                          <tbody className="divide-y divide-slate-800">
                             {quote.items.map((item) => (
                               <tr key={item.id}>
-                                <td className="px-4 py-3 font-medium text-slate-900">
+                                <td className="px-4 py-3 font-medium text-slate-100">
                                   {item.name}
                                 </td>
-                                <td className="px-4 py-3 text-right text-slate-600">
+                                <td className="px-4 py-3 text-right text-slate-400">
                                   {item.quantity}
                                 </td>
-                                <td className="px-4 py-3 text-right text-slate-600">
+                                <td className="px-4 py-3 text-right text-slate-400">
                                   {formatCurrency(item.unitPrice)}
                                 </td>
-                                <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                                <td className="px-4 py-3 text-right font-semibold text-slate-100">
                                   {formatCurrency(item.total)}
                                 </td>
                               </tr>
@@ -250,35 +250,35 @@ export function QuotePreview({
                   </div>
 
                   <div className="mt-6 flex justify-end">
-                    <div className="w-full max-w-xs space-y-2 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+                    <div className="w-full max-w-xs space-y-2 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
                       <div className="flex items-center justify-between">
                         <span>Subtotal</span>
-                        <span className="font-semibold text-slate-900">
+                        <span className="font-semibold text-slate-100">
                           {formatCurrency(quote.subTotal)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span>Tax</span>
-                        <span className="font-semibold text-slate-900">
+                        <span className="font-semibold text-slate-100">
                           {formatCurrency(quote.taxTotal)}
                         </span>
                       </div>
                       {quote.discountTotal > 0 ? (
-                        <div className="flex items-center justify-between text-red-600">
+                        <div className="flex items-center justify-between text-red-400">
                           <span>Discount</span>
                           <span className="font-semibold">
                             -{formatCurrency(quote.discountTotal)}
                           </span>
                         </div>
                       ) : null}
-                      <div className="mt-2 flex items-center justify-between border-t border-dashed border-slate-200 pt-2 text-base font-semibold text-slate-900">
+                      <div className="mt-2 flex items-center justify-between border-t border-dashed border-slate-800 pt-2 text-base font-semibold text-slate-100">
                         <span>Grand Total</span>
                         <span>{formatCurrency(quote.grandTotal)}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-6 border-t border-dashed border-slate-200 pt-4 text-xs italic text-slate-500">
+                  <div className="mt-6 border-t border-dashed border-slate-800 pt-4 text-xs italic text-slate-500">
                     Prices valid for 7 days. This is not a tax invoice.
                   </div>
                 </article>

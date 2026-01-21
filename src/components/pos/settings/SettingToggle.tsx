@@ -12,11 +12,11 @@ export function SettingToggle({
   onChange,
 }: SettingToggleProps) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition group-data-[touch-mode=true]:py-4">
+    <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 transition group-data-[touch-mode=true]:py-4">
       <div className="space-y-1">
-        <div className="text-sm font-medium text-slate-900">{label}</div>
+        <div className="text-sm font-medium text-slate-100">{label}</div>
         {description ? (
-          <p className="text-xs text-slate-500">{description}</p>
+          <p className="text-xs text-slate-400">{description}</p>
         ) : null}
       </div>
       <button
@@ -26,7 +26,7 @@ export function SettingToggle({
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-          checked ? 'bg-emerald-500' : 'bg-slate-200'
+          checked ? 'bg-emerald-500' : 'bg-slate-700'
         }`}
       >
         <span
