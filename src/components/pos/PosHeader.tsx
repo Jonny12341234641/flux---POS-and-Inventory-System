@@ -13,7 +13,7 @@ export default function PosHeader({ onOpenSidebar, className }: PosHeaderProps) 
   return (
     <header
       className={cn(
-        'flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm md:px-6',
+        'flex h-14 items-center justify-between border-b border-slate-800 bg-slate-950 px-4 shadow-sm md:px-6',
         className
       )}
     >
@@ -23,29 +23,29 @@ export default function PosHeader({ onOpenSidebar, className }: PosHeaderProps) 
             type="button"
             onClick={onOpenSidebar}
             aria-label="Open sidebar"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 md:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 md:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
         ) : null}
         <div className="flex items-center gap-2">
-          <span className="text-xl font-bold text-emerald-600">D-POS</span>
-          <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+          <span className="text-xl font-bold text-emerald-500">D-POS</span>
+          <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
             CLOUD
           </span>
         </div>
-        <span className="hidden text-sm font-medium text-slate-500 md:inline">
+        <span className="hidden text-sm font-medium text-slate-400 md:inline">
           Office Jewellery
         </span>
       </div>
       <div className="flex items-center gap-4 md:gap-6">
-        <span className="hidden text-sm font-medium text-slate-500 lg:inline">
+        <span className="hidden text-sm font-medium text-slate-400 lg:inline">
           Jan 7, 2024 | Sales - 1
         </span>
         <button
           type="button"
           aria-label="Notifications"
-          className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+          className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
         >
           <Bell className="h-5 w-5" />
           <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-emerald-500" />
@@ -53,13 +53,13 @@ export default function PosHeader({ onOpenSidebar, className }: PosHeaderProps) 
         <button
           type="button"
           aria-label="User menu"
-          className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1 text-sm font-medium text-slate-600 shadow-sm hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+          className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950 px-2 py-1 text-sm font-medium text-slate-300 shadow-sm hover:bg-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-900/30 text-emerald-500">
             <User className="h-4 w-4" />
           </span>
           <span className="hidden sm:inline">K. Perera</span>
-          <ChevronDown className="h-4 w-4 text-slate-400" />
+          <ChevronDown className="h-4 w-4 text-slate-500" />
         </button>
       </div>
     </header>

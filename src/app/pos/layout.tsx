@@ -14,7 +14,7 @@ export default function PosLayout({
   const handleCloseSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-slate-50 text-slate-900 [height:100dvh]">
+    <div className="relative h-screen w-full overflow-hidden bg-slate-950 text-slate-100 [height:100dvh]">
       <PosHeader
         onOpenSidebar={() => setIsSidebarOpen(true)}
         className="fixed inset-x-0 top-0 z-30"
