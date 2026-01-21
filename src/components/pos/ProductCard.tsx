@@ -24,9 +24,9 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
     <button
       type="button"
       onClick={() => onSelect(product)}
-      className="group flex w-full flex-col rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800"
+      className="group flex w-full flex-col rounded-2xl border border-slate-800 bg-slate-900 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg hover:bg-slate-800"
     >
-      <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-700">
+      <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-800">
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -35,19 +35,19 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
             loading="lazy"
           />
         ) : (
-          <Tag className="h-10 w-10 text-slate-400" />
+          <Tag className="h-10 w-10 text-slate-600" />
         )}
       </div>
       <div className="mt-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <p className="truncate text-sm font-semibold text-slate-100">
             {product.name}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             Stock: {product.stock_quantity} {product.unit || 'pcs'}
           </p>
         </div>
-        <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+        <span className="text-sm font-semibold text-emerald-400">
           {formatCurrency(price)}
         </span>
       </div>

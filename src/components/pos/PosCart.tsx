@@ -109,8 +109,8 @@ export function PosCart({
   }, [items, taxRate]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-slate-800 bg-slate-950/80 p-4">
+    <div className="flex h-full flex-col bg-slate-950 text-slate-100">
+      <div className="border-b border-slate-800 bg-slate-950 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-white">Current Bill</h2>
@@ -138,20 +138,20 @@ export function PosCart({
             <input
               type="text"
               placeholder="Search by name, phone or email..."
-              className="w-full rounded-xl border border-slate-800 bg-slate-900/70 py-3 pl-10 pr-12 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              className="w-full rounded-xl border border-slate-800 bg-slate-900 py-3 pl-10 pr-12 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
               value={customerQuery}
               onChange={(event) => onCustomerQueryChange(event.target.value)}
             />
             <button
               type="button"
               onClick={onAddCustomer}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-slate-800 bg-slate-900 p-1.5 text-slate-400 transition hover:text-white"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-slate-800 bg-slate-900 p-1.5 text-slate-400 transition hover:text-slate-100"
               aria-label="Add customer"
             >
               <UserPlus className="h-4 w-4" />
             </button>
             {customerQuery.trim().length > 0 && (
-              <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-xl">
+              <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-xl">
                 {isCustomerLoading ? (
                   <div className="px-4 py-3 text-sm text-slate-400">
                     Searching customers...
@@ -166,7 +166,7 @@ export function PosCart({
                       key={customer.id}
                       type="button"
                       onClick={() => onSelectCustomer(customer)}
-                      className="flex w-full items-center justify-between gap-4 border-b border-slate-800 px-4 py-3 text-left text-sm transition hover:bg-slate-900"
+                      className="flex w-full items-center justify-between gap-4 border-b border-slate-800 px-4 py-3 text-left text-sm transition hover:bg-slate-800"
                     >
                       <div>
                         <div className="font-semibold text-slate-100">
@@ -187,12 +187,12 @@ export function PosCart({
           </div>
 
           {selectedCustomer ? (
-            <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+            <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900 p-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-xs font-semibold text-white">
                 {getInitials(selectedCustomer.name)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-white">
+                <div className="truncate text-sm font-semibold text-slate-100">
                   {selectedCustomer.name}
                 </div>
                 <div className="text-xs text-slate-400">
@@ -214,7 +214,7 @@ export function PosCart({
 
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-10 text-center text-sm text-slate-500">
+          <div className="rounded-xl border border-dashed border-slate-800 bg-slate-900 px-6 py-10 text-center text-sm text-slate-500">
             Add products to begin a sale.
           </div>
         ) : (
@@ -226,7 +226,7 @@ export function PosCart({
             return (
               <div
                 key={item.product.id}
-                className="cursor-pointer rounded-xl border border-slate-800 bg-slate-900/60 p-3 transition hover:border-emerald-400/60"
+                className="cursor-pointer rounded-xl border border-slate-800 bg-slate-900 p-3 transition hover:border-emerald-400/60"
                 role="button"
                 tabIndex={0}
                 onClick={() => onEditItem(item)}
@@ -239,14 +239,14 @@ export function PosCart({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-slate-100">
                       {item.product.name}
                     </p>
                     <p className="text-xs text-slate-400">
                       {formatCurrency(unitPrice)}
                     </p>
                   </div>
-                  <div className="text-sm font-semibold text-white">
+                  <div className="text-sm font-semibold text-slate-100">
                     {formatCurrency(lineTotal)}
                   </div>
                 </div>
@@ -304,22 +304,22 @@ export function PosCart({
         )}
       </div>
 
-      <div className="border-t border-slate-800 bg-slate-950/80 p-4">
+      <div className="border-t border-slate-800 bg-slate-900 p-4">
         <div className="space-y-2 text-sm text-slate-300">
           <div className="flex justify-between">
             <span>Subtotal</span>
-            <span className="text-white">
+            <span className="text-slate-100">
               {formatCurrency(summary.subTotal)}
             </span>
           </div>
           <div className="flex justify-between">
             <span>Tax</span>
-            <span className="text-white">{formatCurrency(summary.tax)}</span>
+            <span className="text-slate-100">{formatCurrency(summary.tax)}</span>
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between border-t border-dashed border-slate-800 pt-3">
           <span className="text-sm font-semibold text-slate-200">Total</span>
-          <span className="text-xl font-bold text-white">
+          <span className="text-xl font-bold text-slate-100">
             {formatCurrency(summary.total)}
           </span>
         </div>
@@ -328,7 +328,7 @@ export function PosCart({
             type="button"
             onClick={onHold}
             disabled={items.length === 0}
-            className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl border border-slate-800 bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-300 transition hover:border-slate-600 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Hold
           </button>

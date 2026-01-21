@@ -560,7 +560,7 @@ export function CheckoutModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-slate-100 dark:bg-slate-950"
+      className="fixed inset-0 z-50 bg-slate-900 dark"
       role="dialog"
       aria-modal="true"
       aria-label="Checkout"
@@ -569,14 +569,14 @@ export function CheckoutModal({
         <button
           type="button"
           onClick={handleRequestClose}
-          className="absolute right-6 top-6 rounded-full border border-slate-200 bg-white p-2 text-slate-500 transition hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+          className="absolute right-6 top-6 rounded-full border border-slate-700 bg-slate-800 p-2 text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
           aria-label="Close checkout"
         >
           <X className="h-4 w-4" />
         </button>
 
-        <section className="flex w-full flex-col border-b border-slate-200 bg-slate-50 lg:w-[38%] lg:border-b-0 lg:border-r dark:border-slate-800 dark:bg-slate-950">
-          <div className="border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+        <section className="flex w-full flex-col border-b border-slate-800 bg-slate-950 lg:w-[38%] lg:border-b-0 lg:border-r">
+          <div className="border-b border-slate-800 px-6 py-4">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
               Current Bill
             </p>
@@ -596,10 +596,10 @@ export function CheckoutModal({
           </div>
         </section>
 
-        <section className="flex w-full flex-1 flex-col bg-white dark:bg-slate-950">
+        <section className="flex w-full flex-1 flex-col bg-slate-900">
           <div className="flex-1 overflow-y-auto p-6">
             {submitError ? (
-              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="mb-4 rounded-xl border border-red-900/50 bg-red-900/20 px-4 py-3 text-sm text-red-400">
                 {submitError}
               </div>
             ) : null}
@@ -633,9 +633,9 @@ interface CheckoutInterfaceProps {
 
 export function CheckoutInterface(props: CheckoutInterfaceProps) {
   return (
-    <div className="fixed inset-0 z-50 flex h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 animate-in slide-in-from-bottom-10 duration-300">
+    <div className="fixed inset-0 z-50 flex h-screen w-screen overflow-hidden bg-slate-900 animate-in slide-in-from-bottom-10 duration-300 dark">
       {/* Left Panel: Summary (35%) */}
-      <div className="h-full border-r border-slate-200 shadow-xl z-20 hidden lg:block">
+      <div className="h-full border-r border-slate-800 bg-slate-950 shadow-xl z-20 hidden lg:block">
         <PaymentSummary 
           cart={props.cart}
           subtotal={props.subtotal}
@@ -647,7 +647,7 @@ export function CheckoutInterface(props: CheckoutInterfaceProps) {
       </div>
 
       {/* Right Panel: Controls (65%) */}
-      <div className="flex-1 h-full">
+      <div className="flex-1 h-full bg-slate-900">
         <PaymentRightPanel 
           total={props.total}
           onComplete={props.onCheckout}
