@@ -24,7 +24,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
     <button
       type="button"
       onClick={() => onSelect(product)}
-      className="group flex w-full flex-col rounded-2xl border border-slate-800 bg-slate-900 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg hover:bg-slate-800"
+      className="group flex w-full flex-col rounded-2xl border border-slate-800 bg-slate-900 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800"
     >
       <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-800">
         {imageUrl ? (
@@ -47,7 +47,7 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
             Stock: {product.stock_quantity} {product.unit || 'pcs'}
           </p>
         </div>
-        <span className="text-sm font-semibold text-emerald-400">
+        <span className="text-sm font-semibold text-slate-100">
           {formatCurrency(price)}
         </span>
       </div>

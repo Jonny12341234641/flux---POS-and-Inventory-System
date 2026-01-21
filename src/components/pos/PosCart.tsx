@@ -242,7 +242,7 @@ export function PosCart({
                     <p className="text-sm font-semibold text-slate-100">
                       {item.product.name}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-100">
                       {formatCurrency(unitPrice)}
                     </p>
                   </div>
@@ -263,7 +263,7 @@ export function PosCart({
                         }
                         onUpdateQuantity(item.product.id, nextQuantity);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-slate-200 transition hover:border-emerald-400 hover:text-emerald-300"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-200 transition hover:border-emerald-400 hover:text-emerald-300"
                       aria-label={`Decrease ${item.product.name}`}
                     >
                       <Minus className="h-4 w-4" />
@@ -277,7 +277,7 @@ export function PosCart({
                         event.stopPropagation();
                         onUpdateQuantity(item.product.id, quantity + 1);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-slate-200 transition hover:border-emerald-400 hover:text-emerald-300"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-200 transition hover:border-emerald-400 hover:text-emerald-300"
                       aria-label={`Increase ${item.product.name}`}
                     >
                       <Plus className="h-4 w-4" />
@@ -292,7 +292,7 @@ export function PosCart({
                       event.stopPropagation();
                       onRemove(item.product.id);
                     }}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-slate-400 transition hover:border-red-400 hover:text-red-300"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-400 transition hover:border-red-400 hover:text-red-300"
                     aria-label={`Remove ${item.product.name}`}
                   >
                     <Trash2 className="h-4 w-4" />

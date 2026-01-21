@@ -34,12 +34,12 @@ export default function PosHeader({ onOpenSidebar, className }: PosHeaderProps) 
             CLOUD
           </span>
         </div>
-        <span className="hidden text-sm font-medium text-slate-400 md:inline">
+        <span className="hidden text-sm font-medium text-slate-100 md:inline">
           Office Jewellery
         </span>
       </div>
       <div className="flex items-center gap-4 md:gap-6">
-        <span className="hidden text-sm font-medium text-slate-400 lg:inline">
+        <span className="hidden text-sm font-medium text-slate-100 lg:inline">
           Jan 7, 2024 | Sales - 1
         </span>
         <button
@@ -53,7 +53,7 @@ export default function PosHeader({ onOpenSidebar, className }: PosHeaderProps) 
         <button
           type="button"
           aria-label="User menu"
-          className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950 px-2 py-1 text-sm font-medium text-slate-300 shadow-sm hover:bg-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+          className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950 px-2 py-1 text-sm font-medium text-slate-100 shadow-sm hover:bg-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
         >
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-900/30 text-emerald-500">
             <User className="h-4 w-4" />
