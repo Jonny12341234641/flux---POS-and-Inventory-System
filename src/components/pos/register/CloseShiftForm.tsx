@@ -56,11 +56,11 @@ export function CloseShiftForm({
 
   const varianceTone = Number.isFinite(variance)
     ? variance < 0
-      ? 'text-red-600'
+      ? 'text-red-400'
       : variance > 0
-        ? 'text-emerald-600'
-        : 'text-slate-500'
-    : 'text-slate-500';
+        ? 'text-emerald-400'
+        : 'text-slate-400'
+    : 'text-slate-400';
 
   const varianceLabel = Number.isFinite(variance)
     ? formatCurrency(variance)
@@ -96,29 +96,29 @@ export function CloseShiftForm({
   const resolvedError = localError ?? errorMessage ?? null;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-sm">
       <div className="flex items-center gap-2">
-        <Wallet className="h-5 w-5 text-slate-500" />
-        <h2 className="text-base font-semibold text-slate-900">
+        <Wallet className="h-5 w-5 text-slate-400" />
+        <h2 className="text-base font-semibold text-slate-100">
           Close Shift
         </h2>
       </div>
-      <p className="mt-2 text-sm text-slate-500">
+      <p className="mt-2 text-sm text-slate-400">
         Reconcile the drawer to finalize this shift.
       </p>
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               Expected Cash
             </div>
-            <div className="mt-2 text-lg font-semibold text-slate-900">
+            <div className="mt-2 text-lg font-semibold text-slate-100">
               {formatCurrency(safeExpected)}
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">
+            <label className="text-sm font-medium text-slate-300">
               Counted Cash
             </label>
             <input
@@ -131,14 +131,14 @@ export function CloseShiftForm({
                 setCountedCash(event.target.value);
                 setLocalError(null);
               }}
-              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-lg font-semibold text-slate-900 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-300"
+              className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-lg font-semibold text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-300"
               placeholder="0.00"
               required
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
               Variance
@@ -151,20 +151,20 @@ export function CloseShiftForm({
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-700">
+          <label className="text-sm font-medium text-slate-300">
             Notes
           </label>
           <textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-300"
+            className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-300 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-300"
             rows={3}
             placeholder="Any discrepancies or remarks..."
           />
         </div>
 
         {resolvedError ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-lg border border-red-900/50 bg-red-900/20 px-4 py-3 text-sm text-red-400">
             {resolvedError}
           </div>
         ) : null}
@@ -173,7 +173,7 @@ export function CloseShiftForm({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-full bg-red-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? 'Closing...' : 'Close Shift'}
           </button>

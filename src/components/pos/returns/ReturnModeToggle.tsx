@@ -31,12 +31,12 @@ const modes: Array<{
 
 export function ReturnModeToggle({ mode, onChange }: ReturnModeToggleProps) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
       <div className="space-y-1">
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-sm font-semibold text-slate-100">
           Sales Return Mode
         </h2>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-400">
           Choose the workflow that matches the customer situation.
         </p>
       </div>
@@ -54,15 +54,15 @@ export function ReturnModeToggle({ mode, onChange }: ReturnModeToggleProps) {
               aria-pressed={isActive}
               className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-left transition ${
                 isActive
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'border-emerald-400 bg-emerald-900/30 text-emerald-400'
+                  : 'border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-100'
               }`}
             >
               <span
                 className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                   isActive
-                    ? 'bg-emerald-100 text-emerald-600'
-                    : 'bg-slate-100 text-slate-400'
+                    ? 'bg-emerald-900/50 text-emerald-400'
+                    : 'bg-slate-800 text-slate-500'
                 }`}
               >
                 <Icon className="h-4 w-4" />

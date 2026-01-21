@@ -38,11 +38,11 @@ const tabs: Array<{
 export function ReportsSidebar({ activeTab, onChange }: ReportsSidebarProps) {
   return (
     <aside className="reports-sidebar space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
           The Scoreboard
         </p>
-        <h2 className="mt-2 text-lg font-semibold text-slate-900">
+        <h2 className="mt-2 text-lg font-semibold text-slate-100">
           Cashier Reports
         </h2>
         <p className="mt-1 text-xs text-slate-500">
@@ -50,7 +50,7 @@ export function ReportsSidebar({ activeTab, onChange }: ReportsSidebarProps) {
         </p>
       </div>
 
-      <nav className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+      <nav className="rounded-2xl border border-slate-800 bg-slate-900 p-2 shadow-sm">
         <ul className="space-y-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -64,15 +64,15 @@ export function ReportsSidebar({ activeTab, onChange }: ReportsSidebarProps) {
                   aria-current={isActive ? 'page' : undefined}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${
                     isActive
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-emerald-900/30 text-emerald-400'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
                   }`}
                 >
                   <span
                     className={`flex h-9 w-9 items-center justify-center rounded-full ${
                       isActive
-                        ? 'bg-emerald-100 text-emerald-600'
-                        : 'bg-slate-100 text-slate-500'
+                        ? 'bg-emerald-900/50 text-emerald-400'
+                        : 'bg-slate-800 text-slate-500'
                     }`}
                   >
                     <Icon className="h-4 w-4" />

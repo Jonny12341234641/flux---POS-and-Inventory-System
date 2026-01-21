@@ -45,13 +45,13 @@ export function ReturnSearch({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm"
     >
       <div className="space-y-1">
-        <h3 className="text-sm font-semibold text-slate-900">
+        <h3 className="text-sm font-semibold text-slate-100">
           {isReceiptMode ? 'Receipt Lookup' : 'Manual Item Search'}
         </h3>
-        <p className="text-xs text-slate-500">{helperText}</p>
+        <p className="text-xs text-slate-400">{helperText}</p>
       </div>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -62,7 +62,7 @@ export function ReturnSearch({
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder={placeholder}
-            className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-12 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-300"
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-12 text-sm text-slate-100 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-300"
           />
           <div className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-1 text-xs text-slate-400 sm:flex">
             <ScanLine className="h-3.5 w-3.5" />
