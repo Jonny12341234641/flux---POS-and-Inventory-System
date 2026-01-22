@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import Barcode from 'react-barcode';
 import { Search } from 'lucide-react';
 
@@ -96,6 +97,7 @@ const extractList = <T,>(data: unknown): T[] => {
 };
 
 export default function POSPage() {
+  const router = useRouter();
   const [productQuery, setProductQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [isProductLoading, setIsProductLoading] = useState(false);
@@ -130,7 +132,7 @@ export default function POSPage() {
   });
 
   const [currentShift, setCurrentShift] = useState<ShiftSession | null>(null);
-  const [isShiftLoading, setIsShiftLoading] = useState(false);
+  const [isShiftLoading, setIsShiftLoading] = useState(true);
   const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
   const [isOpeningShift, setIsOpeningShift] = useState(false);
 
@@ -597,7 +599,10 @@ export default function POSPage() {
     event.preventDefault();
     setCloseShiftError(null);
 
-    if (!currentShift) return;
+    if (!currentShift?.id) {
+      window.alert("Shift ID is missing. Cannot close shift.");
+      return;
+    }
 
     const parsedEndingCash = parseNumber(endingCash, Number.NaN);
     if (!Number.isFinite(parsedEndingCash) || parsedEndingCash < 0) {
@@ -611,8 +616,8 @@ export default function POSPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ending_cash: parsedEndingCash,
-          notes: closingNotes.trim() || undefined,
+          ending_cash: Number(parsedEndingCash),
+          notes: closingNotes?.trim() || "",
         }),
       });
 
@@ -623,12 +628,7 @@ export default function POSPage() {
       }
 
       window.alert('Shift closed successfully');
-      setCurrentShift(null);
-      setCart([]);
-      setSelectedCustomer(null);
-      setCustomerQuery('');
-      setCustomerResults([]);
-      setIsCloseShiftModalOpen(false);
+      router.replace('/auth/login');
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Failed to close shift';
@@ -764,6 +764,14 @@ export default function POSPage() {
     () => [{ id: 'all', name: 'All' }, ...categories],
     [categories]
   );
+
+  if (isShiftLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-400">
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">

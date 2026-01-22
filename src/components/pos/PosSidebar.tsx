@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import {
   BarChart3,
   ChevronLeft,
@@ -91,7 +92,7 @@ export default function PosSidebar({
 
             return (
               <li key={item.label}>
-                <a
+                <Link
                   href={item.href}
                   title={isCollapsed ? item.label : undefined}
                   aria-current={isActive ? 'page' : undefined}
@@ -119,7 +120,7 @@ export default function PosSidebar({
                   >
                     {item.label}
                   </span>
-                </a>
+                </Link>
               </li>
             );
           })}
