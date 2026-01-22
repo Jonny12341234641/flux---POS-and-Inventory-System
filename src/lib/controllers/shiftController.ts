@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/supabase';
+import { createClient } from '../../utils/supabase/server';
 import { TABLES } from '../../lib/constants';
 import type { ShiftSession, ActionResponse, Sale } from '../../types'; // Import ActionResponse
 
@@ -95,6 +95,7 @@ const calculateCashSales = async (
   startTime: string,
   endTime?: string
 ): Promise<number> => {
+  const supabase = await createClient();
   let salesQuery = supabase
     .from(TABLES.SALES)
     .select('id, grand_total')
@@ -162,6 +163,7 @@ const calculateCashTransactions = async (
   shiftId: string,
   endTime?: string
 ): Promise<CashTransactionTotals> => {
+  const supabase = await createClient();
   let query = supabase
     .from(TABLES.CASH_TRANSACTIONS)
     .select('id, amount, type, created_at')
@@ -215,6 +217,7 @@ export const openShift = async (
   startingCash: number
 ): Promise<ActionResponse<ShiftSession>> => {
   try {
+    const supabase = await createClient();
     if (!userId) {
       throw new Error('User ID is required');
     }
@@ -267,6 +270,7 @@ export const getCurrentShift = async (
   userId: string
 ): Promise<ActionResponse<ShiftSession | null>> => {
   try {
+    const supabase = await createClient();
     if (!userId) {
       throw new Error('User ID is required');
     }
@@ -298,6 +302,7 @@ export const getAllShifts = async (): Promise<
   ActionResponse<ShiftWithCashier[]>
 > => {
   try {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from(TABLES.SHIFT_SESSIONS)
       .select(`*, cashier:${TABLES.USERS}(full_name)`)
@@ -335,6 +340,7 @@ export const closeShift = async (
   notes?: string
 ): Promise<ActionResponse<ShiftSession>> => {
   try {
+    const supabase = await createClient();
     if (!shiftId) {
       throw new Error('Shift ID is required');
     }
@@ -434,6 +440,7 @@ export const addCashTransaction = async (
   reason?: string
 ): Promise<ActionResponse<CashTransaction>> => {
   try {
+    const supabase = await createClient();
     if (!shiftId) {
       throw new Error('Shift ID is required');
     }
@@ -493,6 +500,7 @@ export const getShiftStatus = async (
   userId: string
 ): Promise<ActionResponse<ShiftStatus>> => {
   try {
+    const supabase = await createClient();
     if (!userId) {
       throw new Error('User ID is required');
     }

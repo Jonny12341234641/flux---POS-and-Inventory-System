@@ -56,6 +56,7 @@ export async function POST(
 
     return NextResponse.json(result.data, { status: 200 });
   } catch (error) {
+    console.error("Error closing shift:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }
