@@ -12,7 +12,7 @@ const isNumber = (value: unknown): value is number =>
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -25,7 +25,8 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const shiftId = params?.id;
+    const { id } = await params;
+    const shiftId = id;
     const body = (await req.json()) as CloseShiftPayload;
     const { ending_cash, notes } = body ?? {};
 
