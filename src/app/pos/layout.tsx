@@ -11,6 +11,7 @@ export default function PosLayout({
   children: ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const handleCloseSidebar = () => setIsSidebarOpen(false);
 
   return (
@@ -19,7 +20,12 @@ export default function PosLayout({
         onOpenSidebar={() => setIsSidebarOpen(true)}
         className="fixed inset-x-0 top-0 z-30"
       />
-      <PosSidebar isOpen={isSidebarOpen} onClose={handleCloseSidebar} />
+      <PosSidebar 
+        isOpen={isSidebarOpen} 
+        onClose={handleCloseSidebar} 
+        isCollapsed={isCollapsed}
+        onSetCollapsed={setIsCollapsed}
+      />
       {isSidebarOpen ? (
         <button
           type="button"
@@ -28,7 +34,11 @@ export default function PosLayout({
           onClick={handleCloseSidebar}
         />
       ) : null}
-      <div className="flex h-full flex-col pt-14 md:pl-64">
+      <div 
+        className={`flex h-full flex-col pt-14 transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'md:pl-20' : 'md:pl-64'
+        }`}
+      >
         <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="px-4 py-6 md:px-6">{children}</div>
         </main>
