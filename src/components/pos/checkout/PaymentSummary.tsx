@@ -98,14 +98,14 @@ export function PaymentSummary({
                         {item.product?.name || 'Unknown Item'}
                       </div>
                       <div className="text-sm text-slate-400">
-                        @ {formatCurrency((item.unit_price || 0))}
+                        @ {formatCurrency((item.product?.price || 0))}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
                      <div className="font-bold text-white text-lg">
                         {/* We display the original subtotal here, global calc handles the final total */}
-                        {formatCurrency((item.unit_price || 0) * (item.quantity || 0))}
+                        {formatCurrency((item.product?.price || 0) * (item.quantity || 0))}
                      </div>
                      {lineDiscount && (
                        <div className="text-xs text-emerald-400">
